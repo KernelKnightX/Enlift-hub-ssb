@@ -180,10 +180,16 @@ const css = `
   .nav-mobile-btns { display: flex; gap: 10px; padding-top: 20px; }
 
   @media (max-width: 1024px) {
-    .nav-inner { padding: 0 24px; }
+    .nav-inner { padding: 0 16px; }
     .nav-links { display: none; }
     .nav-hamburger { display: block; }
     .nav-actions { display: none; }
+  }
+  @media (max-width: 480px) {
+    .nav-inner { padding: 0 12px; height: 64px; }
+    .nav-logo img { height: 30px; }
+    .nav-logo-name { font-size: 1.2rem; }
+    .nav-logo-tag { font-size: 7px; }
   }
 `;
 

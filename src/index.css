@@ -1,6 +1,30 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Global responsive styles */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+/* Prevent horizontal scroll on mobile */
+body {
+  -webkit-overflow-scrolling: touch;
+  overflow-x: hidden;
+}
+
+/* Ensure proper viewport handling */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
