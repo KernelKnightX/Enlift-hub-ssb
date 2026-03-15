@@ -1,0 +1,16 @@
+{
+  "name": "enlift-hub-whatsapp-bot",
+  "version": "1.0.0",
+  "description": "Free WhatsApp Bot for Enlift Hub with Auto-Reply",
+  "main": "wppconnect-bot.js",
+  "scripts": {
+    "dev": "node wppconnect-bot.js",
+    "start": "node wppconnect-bot.js"
+  },
+  "dependencies": {
+    "@wppconnect-team/wppconnect": "^1.7.6"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

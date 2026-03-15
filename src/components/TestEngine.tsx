@@ -79,7 +79,7 @@ export default function TestEngine({ testType, setId, count }: TestEngineProps) 
     let score = 0;
 
     if (config.hasCorrectAnswer) {
-      questions.forEach((q, i) => {
+      (questions.data as any[]).forEach((q, i) => {
         if ('correctAnswer' in q && answers[i] === q.correctAnswer) correct++;
       });
       score = Math.round((correct / count) * 100);
@@ -119,7 +119,7 @@ export default function TestEngine({ testType, setId, count }: TestEngineProps) 
     );
   }
 
-  const q = questions[current];
+  const q = (questions.data as any[])[current];
   const answeredCount = answers.filter(a => a !== null && a !== '').length;
 
   const renderQuestionContent = () => {
@@ -300,7 +300,7 @@ export default function TestEngine({ testType, setId, count }: TestEngineProps) 
               <CardContent className="p-4">
                 <p className="font-semibold mb-3 text-sm">Question Palette</p>
                 <div className="grid grid-cols-5 gap-2">
-                  {questions.map((_, i) => (
+                  {(questions.data as any[]).map((_, i) => (
                     <button
                       key={i}
                       onClick={() => setCurrent(i)}
@@ -347,7 +347,7 @@ export default function TestEngine({ testType, setId, count }: TestEngineProps) 
               <Button size="sm" variant="outline" onClick={() => setShowPalette(false)}>Close</Button>
             </div>
             <div className="grid grid-cols-5 gap-2">
-              {questions.map((_, i) => (
+              {(questions.data as any[]).map((_, i) => (
                 <button
                   key={i}
                   onClick={() => {

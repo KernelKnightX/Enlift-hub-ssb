@@ -4,6 +4,7 @@ import { srtSituationSets } from '@/data/srtSituations';
 import { viitQuestionSets } from '@/data/viitQuestions';
 import { ppdtImageSets } from '@/data/ppdtImages';
 import { tatImageSets } from '@/data/tatImages';
+import { oirQuestionSets } from '@/data/oirQuestions';
 import { testConfigs } from '@/data/testConfigs';
 import {
   getWATWords,
@@ -12,7 +13,7 @@ import {
   getTATImages,
   getAvailableSets as getFirebaseSets
 } from '@/lib/testDataService';
-import type { WATWord, SRTSituation, VIITQuestion, TestImage, TestConfig } from '@/types/schema';
+import type { WATWord, SRTSituation, VIITQuestion, TestImage, TestConfig, OIRQuestion } from '@/types/schema';
 import type { TestType } from '@/types/enums';
 
 // ==================== SET LISTING ====================
@@ -151,6 +152,20 @@ export function useVIITQuestions(set: string, count: number): { data: VIITQuesti
   return { data, loading };
 }
 
+export function useOIRQuestions(set: string, count: number): { data: OIRQuestion[]; loading: boolean } {
+  const [data, setData] = useState<OIRQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // OIR uses local data
+    const localData = oirQuestionSets[set] || [];
+    setData(localData.slice(0, count));
+    setLoading(false);
+  }, [set, count]);
+
+  return { data, loading };
+}
+
 export function usePPDTImages(set: string, count: number): { data: TestImage[]; loading: boolean } {
   const [data, setData] = useState<TestImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,6 +246,8 @@ export function useTestQuestions(testType: TestType, set: string, count: number)
       return useTATImages(set, count);
     case 'viit':
       return useVIITQuestions(set, count);
+    case 'oir':
+      return useOIRQuestions(set, count);
     default:
       return { data: [], loading: false };
   }

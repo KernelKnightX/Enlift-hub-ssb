@@ -16,7 +16,7 @@ import {
   deleteObject 
 } from 'firebase/storage';
 import { db, storage } from './firebase';
-import type { WATWord, SRTSituation, TestImage } from '@/types/schema';
+import type { WATWord, SRTSituation, TestImage, OIRQuestion } from '@/types/schema';
 
 // Collection names
 const COLLECTIONS = {
@@ -24,6 +24,7 @@ const COLLECTIONS = {
   SRT_SITUATIONS: 'srtSituations',
   PPDT_IMAGES: 'ppdtImages',
   TAT_IMAGES: 'tatImages',
+  OIR_QUESTIONS: 'oirQuestions',
 } as const;
 
 // ==================== WAT ====================
@@ -127,6 +128,21 @@ export async function deleteSRTSet(setId: string): Promise<void> {
   const q = query(collection(db, COLLECTIONS.SRT_SITUATIONS), where('setId', '==', setId));
   const snapshot = await getDocs(q);
   const batch: Promise<void>[] = snapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(batch);
+}
+
+// ==================== OIR ====================
+
+export async function saveOIRSet(setId: string, questions: OIRQuestion[]): Promise<void> {
+  const batch: Promise<void>[] = questions.map((question, index) => {
+    const data = {
+      ...question,
+      setId,
+      order: index + 1,
+      updatedAt: Timestamp.now()
+    };
+    return setDoc(doc(db, COLLECTIONS.OIR_QUESTIONS, `${setId}_${question.id}`), data);
+  });
   await Promise.all(batch);
 }
 
