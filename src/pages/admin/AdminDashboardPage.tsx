@@ -240,6 +240,15 @@ Train the Mind. Clear the Board.`;
       actions: [{ label: 'Upload Situation Sets', path: '/admin/srt' }]
     },
     {
+      id: 'mock',
+      name: 'Mock Test',
+      title: 'Mock Tests (AFCAT/NDA/CDS)',
+      description: 'Manage MCQ mock test questions',
+      icon: FileText,
+      color: 'bg-teal-600',
+      actions: [{ label: 'Upload Mock Tests', path: '/admin/mock' }]
+    },
+    {
       id: 'blog',
       name: 'Blog',
       title: 'Blog Management',

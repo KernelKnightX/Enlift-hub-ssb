@@ -19,6 +19,7 @@ import DirectPasswordResetPage from '@/pages/DirectPasswordResetPage';
 import TermsPage from '@/pages/TermsPage';
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
+import AdminMockTestsPage from '@/pages/admin/AdminMockTestsPage';
 import AdminWATUploadPage from '@/pages/admin/AdminWATUploadPage';
 import AdminSRTSUploadPage from '@/pages/admin/AdminSRTSUploadPage';
 import AdminTATUploadPage from '@/pages/admin/AdminTATUploadPage';
@@ -32,6 +33,11 @@ import SSBProcessPage from '@/pages/SSB/SSBProcessPage';
 import SSBQualitiesPage from '@/pages/SSB/SSBQualitiesPage';
 import SSBAspirantLifestylePage from '@/pages/SSB/SSBAspirantLifestylePage';
 import SSBPreparationPage from '@/pages/SSB/SSBPreparationPage';
+import SSBInterviewPage from '@/pages/SSB/SSBInterviewPage';
+import SSBGroupDiscussionPage from '@/pages/SSB/SSBGroupDiscussionPage';
+import SSBGTOPage from '@/pages/SSB/SSBGTOPage';
+import SSBLecturettePage from '@/pages/SSB/SSBLecturettePage';
+import SSBConferencePage from '@/pages/SSB/SSBConferencePage';
 import BlogPage from '@/pages/Blog/BlogPage';
 
 import PPDTInstructionPage from '@/pages/PPDT/InstructionPage';
@@ -49,6 +55,17 @@ import WATTestPage from '@/pages/WAT/TestPage';
 import SRTInstructionPage from '@/pages/SRT/InstructionPage';
 import SRTSetSelectionPage from '@/pages/SRT/SetSelectionPage';
 import SRTTestPage from '@/pages/SRT/TestPage';
+
+import CDSMockTestPage from '@/pages/MockTest/CDS/MockTestPage';
+import AFCATMockTestPage from '@/pages/MockTest/AFCAT/MockTestPage';
+import AFCATTestInterface from '@/pages/MockTest/AFCAT/TestInterface';
+import NDAMockTestPage from '@/pages/MockTest/NDA/MockTestPage';
+import NDATestInterface from '@/pages/MockTest/NDA/TestInterface';
+import MockTestListingPage from '@/pages/MockTest/MockTestListingPage';
+import CDSTestInterface from '@/pages/MockTest/CDS/TestInterface';
+import CDSTestAnalysisPage from '@/pages/MockTest/CDS/TestAnalysisPage';
+import AFCATTestAnalysisPage from '@/pages/MockTest/AFCAT/TestAnalysisPage';
+import NDATestAnalysisPage from '@/pages/MockTest/NDA/TestAnalysisPage';
 
 /* -------------------- ROUTE GUARDS -------------------- */
 
@@ -84,6 +101,8 @@ function App() {
         <Routes>
           {/* -------- PUBLIC -------- */}
           <Route path="/" element={<LandingPage />} />
+          <Route path="/admissions" element={<Navigate to="/mentorship" replace />} />
+          <Route path="/courses" element={<Navigate to="/mentorship" replace />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPage />} />
           <Route path="/ssb-info" element={<BlogPage />} />
@@ -93,6 +112,11 @@ function App() {
           <Route path="/ssb-lifestyle" element={<SSBAspirantLifestylePage />} />
 
           <Route path="/ssb-preparation" element={<SSBPreparationPage />} />
+          <Route path="/ssb-lecturette" element={<SSBLecturettePage />} />
+          <Route path="/ssb-interview" element={<SSBInterviewPage />} />
+          <Route path="/ssb-group-discussion" element={<SSBGroupDiscussionPage />} />
+          <Route path="/ssb-gto" element={<SSBGTOPage />} />
+          <Route path="/ssb-conference" element={<SSBConferencePage />} />
 
           <Route
             path="/register"
@@ -255,6 +279,97 @@ function App() {
             }
           />
 
+          {/* -------- MOCK TESTS -------- */}
+          <Route
+            path="/mock-tests"
+            element={
+              <ProtectedRoute>
+                <MockTestListingPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/nda"
+            element={
+              <ProtectedRoute>
+                <NDAMockTestPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/cds"
+            element={
+              <ProtectedRoute>
+                <CDSMockTestPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/afcat"
+            element={
+              <ProtectedRoute>
+                <AFCATMockTestPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/nda/test"
+            element={
+              <ProtectedRoute>
+                <NDATestInterface />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/nda/analysis"
+            element={
+              <ProtectedRoute>
+                <NDATestAnalysisPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/cds/test"
+            element={
+              <ProtectedRoute>
+                <AFCATTestInterface />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/cds/analysis"
+            element={
+              <ProtectedRoute>
+                <CDSTestAnalysisPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/afcat/test"
+            element={
+              <ProtectedRoute>
+                <AFCATTestInterface />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mock-test/afcat/analysis"
+            element={
+              <ProtectedRoute>
+                <AFCATTestAnalysisPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* -------- ADMIN (PROTECTED) -------- */}
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
@@ -262,6 +377,7 @@ function App() {
             <Route path="/admin/wat" element={<AdminWATUploadPage />} />
             <Route path="/admin/blog" element={<AdminBlogPage />} />
             <Route path="/admin/srt" element={<AdminSRTSUploadPage />} />
+            <Route path="/admin/mock" element={<AdminMockTestsPage />} />
             <Route path="/admin/tat" element={<AdminTATUploadPage />} />
             <Route path="/admin/ppdt" element={<AdminPPDTUploadPage />} />
           </Route>

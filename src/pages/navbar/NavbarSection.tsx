@@ -14,6 +14,8 @@ interface NavDropdown {
 
 type NavItem = NavLink | NavDropdown;
 
+const WHATSAPP_NUMBER = '918638075112'; // Your number without + or spaces
+
 const navItems: NavItem[] = [
   { label: 'Home', path: '/' },
   {
@@ -25,7 +27,17 @@ const navItems: NavItem[] = [
       { label: 'Aspirant Lifestyle', path: '/ssb-lifestyle' },
     ],
   },
-  { label: 'Preparation Guide', path: '/ssb-preparation' },
+  {
+    label: 'Preparation Guide',
+    dropdown: [
+      { label: 'Overview', path: '/ssb-preparation' },
+      { label: 'Lecturette', path: '/ssb-lecturette' },
+      { label: 'Personal Interview', path: '/ssb-interview' },
+      { label: 'Group Discussion', path: '/ssb-group-discussion' },
+      { label: 'GTO Tasks', path: '/ssb-gto' },
+      { label: 'Conference', path: '/ssb-conference' },
+    ],
+  },
   { label: 'Mentorship', path: '/mentorship' },
   { label: 'Blogs', path: '/blog' },
 ];
@@ -66,13 +78,15 @@ const css = `
   .nav-logo img { height: 38px; width: auto; }
   .nav-logo-wrap { display: flex; flex-direction: column; }
   .nav-logo-name { 
-    font-family: 'Bebas Neue', sans-serif; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif; 
     font-size: 1.5rem; 
+    font-weight: 700; 
     color: #fff; 
-    letter-spacing: 0.08em; 
+    letter-spacing: 0.02em; 
     line-height: 1; 
   }
   .nav-logo-tag { 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif; 
     font-size: 9px; 
     letter-spacing: 0.2em; 
     text-transform: uppercase; 
@@ -89,12 +103,13 @@ const css = `
     border-radius: 4px; 
     transition: all 0.2s; 
     letter-spacing: 0.02em; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   .nav-link:hover, .nav-link.active { 
     color: #fff; 
     background: rgba(255,255,255,0.08); 
   }
-  .nav-dropdown-wrap { position: relative; }
+  .nav-dropdown-wrap { position: relative; z-index: 10; }
   .nav-dropdown-btn { 
     font-size: 13px; 
     font-weight: 500; 
@@ -108,12 +123,14 @@ const css = `
     align-items: center; 
     gap: 5px; 
     transition: all 0.2s; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   .nav-dropdown-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
   .nav-dropdown { 
     position: absolute; 
     top: calc(100% + 2px); /* smaller gap so mouse can reach menu */
     left: 0; 
+    z-index: 100;
     background: #243325; 
     border: 1px solid rgba(200,168,75,0.2); 
     border-radius: 8px; 
@@ -130,7 +147,7 @@ const css = `
   }
   .nav-dropdown-item:last-child { border-bottom: none; }
   .nav-dropdown-item:hover { background: rgba(200,168,75,0.1); }
-  .nav-dropdown-item-name { font-size: 13px; font-weight: 600; color: #fff; }
+  .nav-dropdown-item-name { font-size: 13px; font-weight: 600; color: #fff; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
   .nav-dropdown-item-price { font-size: 12px; color: #C8A84B; margin-top: 2px; }
   .nav-actions { display: flex; align-items: center; gap: 10px; }
   .nav-btn-ghost { 
@@ -146,6 +163,7 @@ const css = `
     text-decoration: none; 
     display: inline-flex; 
     align-items: center; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   .nav-btn-ghost:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
   .nav-btn-primary { 
@@ -162,10 +180,18 @@ const css = `
     align-items: center; 
     border: none; 
     letter-spacing: 0.03em; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   .nav-btn-primary:hover { background: #E2C26A; }
   .nav-hamburger { display: none; background: none; border: none; color: #fff; cursor: pointer; }
-  .nav-mobile { display: none; background: #1A2A1B; border-top: 1px solid rgba(255,255,255,0.05); }
+  .nav-mobile { 
+    display: none; 
+    background: #1A2A1B; 
+    border-top: 1px solid rgba(255,255,255,0.05);
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
   .nav-mobile.open { display: block; }
   .nav-mobile-inner { padding: 20px 24px; display: flex; flex-direction: column; gap: 2px; }
   .nav-mobile-link { 
@@ -176,6 +202,7 @@ const css = `
     padding: 14px 0; 
     border-bottom: 1px solid rgba(255,255,255,0.05); 
     display: block; 
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   .nav-mobile-btns { display: flex; gap: 10px; padding-top: 20px; }
 
@@ -196,7 +223,8 @@ const css = `
 export function NavbarSection() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [dropdownTimeout, setDropdownTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
@@ -210,7 +238,18 @@ export function NavbarSection() {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setDropdownOpen(false);
+      // Don't close dropdown if clicking on dropdown items or the dropdown button
+      const target = e.target as Node;
+      const isDropdownItem = target.closest('.nav-dropdown-item');
+      const isDropdownBtn = target.closest('.nav-dropdown-btn');
+      const isDropdown = target.closest('.nav-dropdown');
+      
+      if (dropRef.current && !dropRef.current.contains(target)) {
+        // Only close if not interacting with any dropdown
+        if (!isDropdownItem && !isDropdownBtn && !isDropdown) {
+          setOpenDropdown(null);
+        }
+      }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -218,7 +257,7 @@ export function NavbarSection() {
 
   useEffect(() => {
     setMobileOpen(false);
-    setDropdownOpen(false);
+    setOpenDropdown(null);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -242,21 +281,35 @@ export function NavbarSection() {
         <div className="nav-links">
           {navItems.map(item => {
             if ('dropdown' in item) {
+              const isOpen = openDropdown === item.label;
               return (
                 <div
                   key={item.label}
                   className="nav-dropdown-wrap"
-                  ref={dropRef}
-                  onMouseEnter={() => setDropdownOpen(true)}
+                  onMouseEnter={() => {
+                    if (dropdownTimeout) clearTimeout(dropdownTimeout);
+                    setOpenDropdown(item.label);
+                  }}
+                  onMouseLeave={() => {
+                    const timeout = setTimeout(() => setOpenDropdown(null), 500);
+                    setDropdownTimeout(timeout);
+                  }}
                 >
-                  <button className="nav-dropdown-btn">
-                    {item.label} <ChevronDown size={14} />
+                  <button 
+                    className="nav-dropdown-btn"
+                    onClick={() => {
+                      setOpenDropdown(isOpen ? null : item.label);
+                    }}
+                  >
+                    {item.label} <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
                   </button>
-                  {dropdownOpen && (
+                  {isOpen && (
                     <div
                       className="nav-dropdown"
-                      onMouseEnter={() => setDropdownOpen(true)}
-                      onMouseLeave={() => setDropdownOpen(false)}
+                      onClick={(e) => {
+                        // Don't close on dropdown click - let the link handle navigation
+                        e.stopPropagation();
+                      }}
                     >
                       {item.dropdown.map(sub => (
                         <Link
@@ -294,7 +347,14 @@ export function NavbarSection() {
           ) : (
             <>
               <Link to="/login" className="nav-btn-ghost">Login</Link>
-              <Link to="/register" className="nav-btn-primary">Get Started</Link>
+              <a 
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I'm interested in Enlift Hub SSB coaching programs")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="nav-btn-primary"
+              >
+                Apply Now
+              </a>
             </>
           )}
         </div>
@@ -339,7 +399,16 @@ export function NavbarSection() {
             ) : (
               <>
                 <Link to="/login" className="nav-btn-ghost" style={{ flex: 1, textAlign: 'center' }} onClick={() => setMobileOpen(false)}>Login</Link>
-                <Link to="/register" className="nav-btn-primary" style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }} onClick={() => setMobileOpen(false)}>Get Started</Link>
+                <a 
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I'm interested in Enlift Hub SSB coaching programs")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nav-btn-primary"
+                  style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Apply Now
+                </a>
               </>
             )}
           </div>

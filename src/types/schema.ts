@@ -139,3 +139,73 @@ export interface BlogCategory {
   slug: string;
   description?: string;
 }
+
+// Mock Test types
+export type ExamType = "prelims" | "mains" | "mains-descriptive" | "current-affairs";
+export type Difficulty = "easy" | "medium" | "hard";
+
+export interface MockTestQuestion {
+  id: number;
+  question: string;
+  options: string[]; // for MCQ
+  correctAnswer: number; // 0-3 for MCQ
+  explanation: string;
+  subject: string;
+  difficulty: Difficulty;
+  source: string;
+  // For descriptive questions
+  answer?: string;
+}
+
+export interface MockTest {
+  id: string;
+  title: string;
+  description: string;
+  examType: ExamType;
+  examName: string; // CDS, AFCAT, NDA, etc.
+  subject: string;
+  difficulty: Difficulty;
+  duration: number; // minutes
+  totalQuestions: number;
+  totalMarks: number;
+  negativeMarking: number; // e.g., 0.33
+  positiveMarking: number; // e.g., 1
+  passingScore: number; // e.g., 40
+  questions: MockTestQuestion[];
+  createdAt: string;
+  createdBy: string;
+  isPublished: boolean;
+}
+
+export interface MockTestAnswer {
+  questionId: number;
+  question: string;
+  userAnswer: number | null;
+  correctAnswer: number;
+  isCorrect: boolean;
+  isUnanswered: boolean;
+  explanation: string;
+  topic: string;
+}
+
+export interface MockTestAttempt {
+  id: string;
+  testId: string;
+  testTitle: string;
+  examType: string;
+  examName: string;
+  score: number; // percentage
+  correct: number;
+  incorrect: number;
+  total: number;
+  totalAnswered: number;
+  totalUnanswered: number;
+  rawScore: number;
+  negativeMarks: number;
+  timeTaken: number; // seconds
+  timeLimit: number;
+  answers: MockTestAnswer[];
+  completedAt: string;
+  passingScore: number;
+  isPassed: boolean;
+}

@@ -97,7 +97,7 @@ export default function WATUploadPage() {
       await saveWATSet(setId, words);
       setMessage({ type: 'success', text: `Successfully saved ${words.length} words to ${setId}` });
       setWords([]);
-      setSetId('');
+      // Keep setId so user can add more words to the same set
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
     } finally {

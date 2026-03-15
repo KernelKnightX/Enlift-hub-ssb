@@ -101,7 +101,7 @@ export default function SRTSUploadPage() {
       await saveSRTSet(setId, situations);
       setMessage({ type: 'success', text: `Successfully saved ${situations.length} situations to ${setId}` });
       setSituations([]);
-      setSetId('');
+      // Keep setId so user can add more situations to the same set
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
     } finally {

@@ -6,7 +6,7 @@ import {
   onAuthStateChanged,
   updateProfile,
   setPersistence,
-  browserSessionPersistence,
+  browserLocalPersistence,
   sendPasswordResetEmail,
   getAuth,
   type User as FirebaseUser
@@ -49,13 +49,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Set session-only persistence and listen for auth state changes
+  // Set local persistence and listen for auth state changes
   useEffect(() => {
-    // Set Firebase Auth to session-only persistence (user must login each session)
-    setPersistence(auth, browserSessionPersistence).catch(console.error);
+    // First check localStorage for existing session (our custom auth)
+    const storedUser = localStorage.getItem('enlift-user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch {
+        localStorage.removeItem('enlift-user');
+      }
+    }
+
+    // Set Firebase Auth to local persistence (remember user across sessions)
+    setPersistence(auth, browserLocalPersistence).catch(console.error);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
+      // Note: This app uses localStorage-based auth, not Firebase Auth
+      // Firebase onAuthStateChanged is only used for potential future Firebase login
+      // For now, we don't clear user on Firebase auth state change since we manage auth via localStorage
+      
+      // Only process Firebase user if we're actually using Firebase auth (not the case currently)
+      // This prevents the logout issue on refresh
+      if (firebaseUser && storedUser === null) {
+        // Only try to get Firestore user if there was no localStorage user
+        // This is a fallback for actual Firebase users in the future
         // Get user profile from Firestore
         try {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
@@ -91,9 +109,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } else {
-        // User signed out - clear the user state
-        setUser(null);
-        localStorage.removeItem('enlift-user');
+        // Firebase user is null - but we use localStorage-based auth
+        // Don't clear user state here as it would log out the user on refresh
+        // The user session is managed via localStorage in the login function
+        // Only clear if there's no localStorage user (truly signed out)
+        const storedUser = localStorage.getItem('enlift-user');
+        if (!storedUser) {
+          setUser(null);
+        }
       }
       setLoading(false);
     });

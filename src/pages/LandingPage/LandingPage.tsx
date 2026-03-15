@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import { NavbarSection } from '@/pages/navbar/NavbarSection';
 import { FooterSection } from '@/pages/navbar/FooterSection';
+import { WhatsAppFloatButton } from '@/components/WhatsAppFloatButton';
 import {
   ArrowRight, ArrowLeft, ShieldCheck, ChevronDown, CheckCircle2, Users, Award,
   Clock, GraduationCap, LogOut, Target, Repeat, User,
@@ -205,8 +206,8 @@ const css = `
   .hero-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-bottom: 60px; }
   .btn-primary { display: inline-flex; align-items: center; gap: 10px; background: var(--gold); color: var(--ink); font-size: 14px; font-weight: 700; padding: 15px 32px; text-decoration: none; transition: all 0.25s; letter-spacing: 0.05em; text-transform: uppercase; border: none; cursor: pointer; }
   .btn-primary:hover { background: var(--gold-light); transform: translateY(-2px); box-shadow: 0 12px 40px rgba(200,168,75,0.4); }
-  .btn-outline { display: inline-flex; align-items: center; gap: 10px; background: transparent; color: #1a1a1a; font-size: 14px; font-weight: 600; padding: 15px 32px; text-decoration: none; border: 1px solid rgba(0,0,0,0.2); transition: all 0.25s; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; }
-  .btn-outline:hover { border-color: #C8A84B; color: #C8A84B; }
+  .btn-outline { display: inline-flex; align-items: center; gap: 10px; background: transparent; color: var(--white); font-size: 14px; font-weight: 600; padding: 15px 32px; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); transition: all 0.25s; letter-spacing: 0.05em; text-transform: uppercase; cursor: pointer; }
+  .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
   .hero-pillars { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid rgba(255,255,255,0.08); }
   .hero-pillar { padding: 24px 20px; border-right: 1px solid rgba(255,255,255,0.08); }
   .hero-pillar:last-child { border-right: none; }
@@ -228,6 +229,9 @@ const css = `
   .sec-h2-white { color: var(--white); }
   .sec-desc { font-size: 1rem; line-height: 1.85; color: var(--mist); max-width: 580px; }
   .rule { width: 60px; height: 2px; background: var(--gold); margin-bottom: 24px; }
+  
+  /* Navbar spacing - ensure sections don't collide with fixed navbar */
+  section { scroll-margin-top: 80px; }
 
   /* ── WHAT ENLIFT HUB OFFER'S ── */
   .offer { background: var(--army); }
@@ -240,6 +244,11 @@ const css = `
   .offer-title { font-family: 'Cormorant Garamond', serif; font-size: 1.6rem; font-weight: 700; color: var(--white); margin-bottom: 14px; }
   .offer-desc { font-size: 0.9rem; color: rgba(255,255,255,0.5); line-height: 1.8; margin-bottom: 24px; }
   .offer-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); border: 1px solid rgba(200,168,75,0.3); display: inline-block; padding: 4px 12px; }
+  /* Carousels - hidden by default */
+  .offer-carousel { display: none; }
+  .offer-carousel-desktop { display: grid; }
+  .video-carousel-mobile { display: none; }
+  .video-carousel-desktop { display: block; }
 
   /* ── ABOUT ── */
   .about { background: var(--white); }
@@ -287,6 +296,8 @@ const css = `
   .courses-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: rgba(0,0,0,0.06); margin-top: 64px; }
   .course-card { background: var(--cream); padding: 48px 40px; position: relative; }
   .course-card.featured { background: var(--army); }
+  .course-card-secondary { background: var(--cream); }
+  .course-card-tertiary { background: var(--white); border: 2px solid var(--gold); }
   .course-card-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; padding: 5px 12px; display: inline-block; margin-bottom: 24px; }
   .course-card:not(.featured) .course-card-tag { background: var(--gold-pale); color: var(--army); border: 1px solid rgba(200,168,75,0.3); }
   .course-card.featured .course-card-tag { background: var(--gold); color: var(--ink); }
@@ -303,6 +314,14 @@ const css = `
   .course-price { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; color: var(--gold); margin-bottom: 24px; line-height: 1; }
   .course-price-sub { font-family: 'DM Sans', sans-serif; font-size: 12px; color: var(--mist); font-weight: 400; margin-bottom: 4px; }
   .course-card.featured .course-price-sub { color: rgba(255,255,255,0.35); }
+  .course-card-secondary .course-name { color: var(--ink); }
+  .course-card-secondary .course-duration { color: var(--mist); }
+  .course-card-secondary .course-feature { color: #444; }
+  .course-card-secondary .course-price-sub { color: var(--mist); }
+  .course-card-tertiary .course-name { color: var(--army); }
+  .course-card-tertiary .course-duration { color: var(--mist); }
+  .course-card-tertiary .course-feature { color: #444; }
+  .course-card-tertiary .course-price-sub { color: var(--mist); }
 
   /* ── FACULTY ── */
   .faculty { background: var(--army); }
@@ -461,11 +480,18 @@ const css = `
   }
 
   @media (max-width: 860px) {
-    .sec { padding: 72px 24px; }
+    .sec { padding: 80px 24px; }
+    section { scroll-margin-top: 70px; }
     .nav-links, .nav-actions { display: none; }
     .nav-hamburger { display: flex; }
     .hero-pillars { grid-template-columns: repeat(2, 1fr); }
     .offer-grid, .courses-grid, .infra-grid, .testi-grid { grid-template-columns: 1fr; }
+    .offer-card { padding: 32px 28px; }
+    .offer-carousel { display: block !important; }
+    .offer-carousel-desktop { display: none !important; }
+    /* Video carousel show on mobile */
+    .video-carousel-mobile { display: block !important; }
+    .video-carousel-desktop { display: none !important; }
     .journey-timeline { grid-template-columns: 1fr 1fr; }
     .olq-grid { grid-template-columns: repeat(3, 1fr); }
     .psyplatform-tests { grid-template-columns: repeat(2, 1fr); }
@@ -475,10 +501,17 @@ const css = `
     .daily-habits { grid-template-columns: 1fr; }
     .faculty-grid { grid-template-columns: 1fr 1fr; }
     .footer-top { grid-template-columns: 1fr; gap: 28px; }
-    .psyplatform { padding: 72px 24px; }
+    .psyplatform { padding: 80px 24px; }
+    .psyplatform-tests .psytest-card { padding: 24px 20px; }
+    .psytest-name { font-size: 2rem; }
+    .course-card { padding: 32px 24px; }
+    /* Better text alignment for mobile */
+    .sec-desc, .about-p, .offer-desc, .infra-desc, .testi-text, .daily-why { text-align: left; }
   }
 
   @media (max-width: 560px) {
+    .sec { padding: 72px 16px; }
+    section { scroll-margin-top: 65px; }
     .hero-h1 { font-size: 1.8rem; }
     .hero-tagline { font-size: 2.5rem; }
     .hero-tagline-container { min-height: 70px; }
@@ -489,11 +522,134 @@ const css = `
     .olq-grid { grid-template-columns: 1fr 1fr; }
     .psyplatform-tests { grid-template-columns: 1fr; }
     .results-stats { grid-template-columns: 1fr 1fr; }
-    .results-entries { grid-template-columns: 1fr 1fr; }
+    .results-entries { grid-template-columns: 1fr; }
     .faculty-grid { grid-template-columns: 1fr; }
     .enroll-actions { flex-direction: column; align-items: center; }
     .nav-inner { padding: 0 20px; }
     .about-badge { right: 0; bottom: -20px; }
+    /* Offer cards mobile */
+    .offer-card { padding: 24px 20px; }
+    .offer-title { font-size: 1.3rem; }
+    .offer-desc { font-size: 0.85rem; line-height: 1.6; }
+    .offer-icon { width: 44px; height: 44px; margin-bottom: 20px; }
+    .offer-tag { font-size: 9px; padding: 3px 10px; }
+    /* Course cards mobile */
+    .course-card { padding: 24px 20px; }
+    .course-name { font-size: 1.4rem; }
+    .course-price { font-size: 2rem; }
+    /* Psychology platform mobile */
+    .psyplatform-tests { gap: 12px; }
+    .psytest-card { padding: 20px 16px; }
+    .psytest-name { font-size: 1.8rem; }
+    .psytest-desc { font-size: 12px; }
+    .psytest-time { font-size: 10px; }
+    /* Faculty mobile */
+    .faculty-card { padding-bottom: 16px; }
+    .faculty-body { padding: 16px; }
+    .faculty-name { font-size: 0.9rem; }
+    /* Testimonial mobile */
+    .testi-card { padding: 28px 20px; }
+    .testi-text { font-size: 0.95rem; }
+    /* Infra mobile */
+    .infra-item { padding: 28px 20px; }
+    .infra-title { font-size: 0.95rem; }
+    .infra-desc { font-size: 0.85rem; }
+    /* Daily schedule mobile */
+    .daily-slot { gap: 12px; padding: 16px 0; }
+    .daily-time { font-size: 10px; min-width: 60px; }
+    .daily-act { font-size: 0.85rem; }
+    .daily-why { font-size: 11px; }
+    /* Habit cards mobile */
+    .habit-card { padding: 20px 16px; }
+    .habit-card-title { font-size: 0.85rem; }
+    .habit-card-desc { font-size: 11px; }
+    /* OLQ mobile */
+    .olq-item { padding: 20px 16px; }
+    .olq-name { font-size: 0.8rem; }
+    .olq-num { font-size: 1.5rem; }
+    .olq-category { font-size: 9px; }
+  }
+  
+  @media (max-width: 480px) {
+    .hero { padding: 90px 16px 60px; }
+    .hero-h1 { font-size: 1.6rem; }
+    .hero-p { font-size: 0.95rem; }
+    .hero-btn { padding: 12px 20px; font-size: 0.9rem; }
+    .hero-btns { flex-direction: column; gap: 10px; }
+    .sec { padding: 56px 16px; }
+    section { scroll-margin-top: 60px; }
+    .sec-h2 { font-size: 1.4rem; }
+    .sec-desc { font-size: 0.9rem; }
+    .exam-grid { grid-template-columns: 1fr; }
+    .exam-card { padding: 16px; }
+    .testi-grid { grid-template-columns: 1fr; }
+    .results-stats { grid-template-columns: 1fr; }
+    .results-entries { grid-template-columns: 1fr; }
+    .daily-grid { grid-template-columns: 1fr; }
+    .cta-box { padding: 32px 16px; }
+    .cta-h2 { font-size: 1.3rem; }
+    .navbar { padding: 12px 16px; }
+    .nav-logo { font-size: 1.1rem; }
+    .nav-links { display: none; }
+    /* Additional offer card fixes */
+    .offer-card { padding: 20px 16px; }
+    .offer-title { font-size: 1.2rem; margin-bottom: 10px; }
+    .offer-desc { font-size: 0.8rem; margin-bottom: 16px; }
+    .offer-icon { width: 40px; height: 40px; margin-bottom: 16px; }
+    .offer-icon svg { width: 20px; height: 20px; }
+    /* Course card fixes */
+    .course-card { padding: 20px 16px; }
+    .course-name { font-size: 1.2rem; }
+    .course-features { gap: 8px; }
+    .course-feature { font-size: 12px; }
+    .course-price { font-size: 1.8rem; }
+    /* Psychology test fixes */
+    .psytest-card { padding: 16px 14px; }
+    .psytest-name { font-size: 1.5rem; }
+    .psytest-full { font-size: 10px; }
+    .psytest-desc { font-size: 11px; margin-bottom: 12px; }
+    .psytest-tag { font-size: 8px; padding: 2px 6px; margin-bottom: 12px; }
+    /* Faculty fixes */
+    .faculty-img { height: 160px; }
+    .faculty-name { font-size: 0.85rem; }
+    .faculty-role { font-size: 11px; }
+    .faculty-spec { font-size: 11px; }
+    /* Testimonial fixes */
+    .testi-card { padding: 24px 16px; }
+    .testi-text { font-size: 0.9rem; line-height: 1.6; }
+    .testi-name { font-size: 13px; }
+    /* Results stats */
+    .result-stat { padding: 32px 20px; }
+    .result-stat-val { font-size: 3rem; }
+    .result-stat-label { font-size: 10px; }
+    /* Footer fixes */
+    .footer { padding: 48px 16px 32px; }
+    .footer-top { gap: 24px; }
+    /* Journey timeline */
+    .journey-day { padding: 24px 16px; }
+    .journey-day-title { font-size: 0.9rem; }
+    .journey-day-item { font-size: 11px; }
+    /* Offer carousel mobile */
+    .offer-carousel { position: relative; margin-top: 32px; }
+    .offer-carousel-track { display: flex; transition: transform 0.4s ease; }
+    .offer-carousel-card { min-width: 100%; padding: 0 16px; }
+    .offer-carousel-card .offer-card { padding: 24px 20px; }
+    .offer-carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 20px; }
+    .offer-carousel-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: all 0.3s; }
+    .offer-carousel-dot.active { background: var(--gold); width: 30px; border-radius: 5px; }
+    .offer-carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(200,168,75,0.9); color: #0D1710; border: none; width: 36; height: 36; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .offer-carousel-btn.prev { left: -5px; }
+    .offer-carousel-btn.next { right: -5px; }
+    /* Video carousel mobile */
+    .video-carousel { position: relative; }
+    .video-carousel-track { display: flex; transition: transform 0.4s ease; }
+    .video-carousel-slide { min-width: 100%; padding: 0 40px; }
+    .video-carousel-dots { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
+    .video-carousel-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3); border: none; cursor: pointer; transition: all 0.3s; }
+    .video-carousel-dot.active { background: var(--gold); }
+    .video-carousel-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; background: rgba(200,168,75,0.9); color: #0D1710; border: none; width: 32; height: 32; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+    .video-carousel-btn.prev { left: 0; }
+    .video-carousel-btn.next { right: 0; }
   }
 `;
 
@@ -555,52 +711,51 @@ const journey = [
 
 const courses = [
   {
-    tag: '15 Days — Offline',
-    name: 'Full SSB Residential',
-    duration: 'Residential · New batch every Monday',
-    price: '₹18,999',
-    priceLabel: 'Full course fee',
+    tag: '15 Days · Offline',
+    name: 'Elite Residential Program',
+    duration: 'Selective Batch of 10 candidates. Admission through Enlift Hub Entry Assessment.',
+    price: '₹9,999',
+    priceLabel: 'Starting from',
     features: [
-      'Complete Psychology training (TAT, WAT, SRT, PPDT, SD)',
-      'GTO Ground sessions with ex-GTO officers',
-      '2 Mock Personal Interviews',
-      'Lecturette & Group Discussion practice',
-      'PIQ analysis and preparation',
+      'Complete end-to-end SSB preparation',
+      'Full Psychology training (TAT, WAT, SRT, PPDT)',
+      'GTO ground tasks with ex-GTO officers',
+      'Mock personal interviews & PIQ analysis',
       'OLQ-focused personality development',
-    ],
-    featured: false,
-  },
-  {
-    tag: 'Most Popular',
-    name: 'Intensive 7-Day',
-    duration: 'Residential · Weekend batches available',
-    price: '₹11,999',
-    priceLabel: 'Full course fee',
-    features: [
-      'Psychology deep-dive (3 full days)',
-      'GTO ground and outdoor task training',
-      'Mock interview with ex-IO officer',
-      'Daily current affairs & lecturette',
-      'Psychology platform unlimited access',
-      'Post-course mentorship support',
     ],
     featured: true,
   },
   {
-    tag: '20 Days — Online',
-    name: 'Online Mentorship',
-    duration: 'Live · 8 PM – 10 PM daily',
-    price: '₹8,999',
-    priceLabel: 'Full course fee',
+    tag: '15 Days · Live Online',
+    name: 'Online SSB Preparation',
+    duration: 'Admission through Enlift Hub Entry Assessment.',
+    price: '₹4,999',
+    priceLabel: 'Starting from',
     features: [
-      '13 days: Psychology + Interview prep',
-      '7 days: GTO strategy & planning tasks',
-      'Daily recorded lecture access',
-      'Mock interview with ex-defence officer',
-      'Psychology platform unlimited access',
-      'Lifetime alumni community access',
+      'Complete end-to-end SSB preparation',
+      'Psychology tests preparation & practice',
+      'GTO strategy & planning tasks',
+      'Interview preparation & PIQ guidance',
+      'Daily structured live mentorship',
     ],
     featured: false,
+    variant: 'secondary',
+  },
+  {
+    tag: 'Self-Practice Platform',
+    name: 'Digital Psychology Practice',
+    duration: 'Practice TAT, WAT, SRT & PPDT under real timing.',
+    price: '₹1,999',
+    priceLabel: 'Starting from',
+    features: [
+      'Unlimited psychology test attempts',
+      'Real SSB timing simulation',
+      'AI-assisted feedback & improvement tips',
+      'Structured response guidance',
+      'Track your psychology performance',
+    ],
+    featured: false,
+    variant: 'tertiary',
   },
 ];
 
@@ -608,9 +763,9 @@ const facultyData = [
   { name: 'Brig. Sanjay Ghosh (Retd.)', rank: 'Ex-Army', role: 'Commandant & Leadership Expert', spec: 'Former Commandant · 25 yrs', image: '/sanjoyghosh.jpeg' },
   { name: 'Col. Aditya Budhiraja (Retd.)', rank: 'Ex-Army', role: 'Psychologist & Psychology Expert', spec: 'TAT · WAT · SRT · SDT · 18 yrs', image: '/Col.AB.png' },
   { name: 'Cdr. ABC (Retd.)', rank: 'Ex-Navy', role: 'GTO & Interviewing Officer', spec: 'GTO Ground Training · PI Expert', image: '/sanjoyghosh1.jpeg' },
-  { name: 'Harsh Joshi', rank: 'Director', role: 'Operations & Administration', spec: 'Enlift hub Founder', image: '/Harshjoshi.png' },
+  { name: 'Harsh Joshi', rank: 'Admin', role: 'Operations & Administration', spec: 'Enlift hub Founder', image: '/Harshjoshi.png' },
 ];
-
+ 
 const talksCards = [
   { icon: Mic, title: 'Commander Speaks Series', sub: 'Monthly talks with current serving officers — Colonels, Commandants, and Wing Commanders sharing ground truth.' },
   { icon: Trophy, title: 'Recommended Candidates', sub: 'Our recommended students return to share their board experience, answer questions, and inspire the next batch.' },
@@ -739,6 +894,8 @@ function FAQ() {
 export default function LandingPage() {
   const [progress, setProgress] = useState(0);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [currentOfferIndex, setCurrentOfferIndex] = useState(0);
+  const [currentMobileVideoIndex, setCurrentMobileVideoIndex] = useState(0);
 
   useEffect(() => {
     const onScroll = () => {
@@ -945,8 +1102,29 @@ export default function LandingPage() {
             <h3 className="sec-h2 sec-h2-white" style={{ textAlign: 'center', fontSize: 'clamp(1.4rem, 2.5vw, 2rem)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>Three paths to the board.</h3>
             <p className="sec-desc" style={{ color: 'rgba(255,255,255,0.4)', maxWidth: '800px', margin: '16px auto 0', textAlign: 'center', lineHeight: 1.8 }}>Whether you prefer elite classroom immersion, structured online mentorship, or independent psychology practice, Enlift Hub provides a preparation pathway designed for every serious SSB aspirant.</p>
           </div>
-          {/* Three cards in a single row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, alignItems: 'stretch' }}>
+          {/* Three cards in a single row - Desktop */}
+          <div className="offer-carousel" style={{ display: 'none' }}>
+            <div className="offer-carousel-track" style={{ transform: `translateX(-${currentOfferIndex * 100}%)` }}>
+              {offerCards.map((c, idx) => (
+                <div className="offer-carousel-card" key={idx}>
+                  <div className="offer-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div className="offer-icon"><c.icon size={22} /></div>
+                    <div className="offer-title">{c.title}</div>
+                    <div className="offer-desc" style={{ textAlign: 'justify', flex: 1 }}>{c.desc}</div>
+                    <span className="offer-tag">{c.tag}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="offer-carousel-btn prev" onClick={() => setCurrentOfferIndex((currentOfferIndex - 1 + offerCards.length) % offerCards.length)}><ArrowLeft size={18} /></button>
+            <button className="offer-carousel-btn next" onClick={() => setCurrentOfferIndex((currentOfferIndex + 1) % offerCards.length)}><ArrowRight size={18} /></button>
+            <div className="offer-carousel-dots">
+              {offerCards.map((_, idx) => (
+                <button key={idx} className={`offer-carousel-dot ${idx === currentOfferIndex ? 'active' : ''}`} onClick={() => setCurrentOfferIndex(idx)} />
+              ))}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, alignItems: 'stretch' }} className="offer-carousel-desktop">
             {offerCards.map(c => (
               <div className="offer-card" key={c.title} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div className="offer-icon"><c.icon size={22} /></div>
@@ -1107,7 +1285,7 @@ Through interactions with serving officers, assessors, and successful candidates
         <div className="sec-inner">
           {/* Heading */}
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <h1 className="sec-eyebrow" style={{ fontSize: '32px', letterSpacing: '0.15em', fontWeight: 800, color: '#C8A84B', marginBottom: 8 }}>WHAT SSB COURSES DOES ENLIFT HUB OFFER?</h1>
+            <h1 className="sec-eyebrow" style={{ fontSize: '32px', letterSpacing: '0.15em', fontWeight: 800, color: '#C8A84B', marginBottom: 8 }}>THE COURSES WHICH MAKE YOU AN OFFICER</h1>
             <div className="rule" style={{ margin: '0 auto' }} />
           </div>
           {/* Subheading & Description */}
@@ -1118,8 +1296,8 @@ Through interactions with serving officers, assessors, and successful candidates
             <p className="sec-desc" style={{ color: '#0D1710', maxWidth: '800px', margin: '0 auto', textAlign: 'center', lineHeight: 1.8 }}>Every course is designed around real SSB demands — not generic defence coaching content.</p>
           </div>
           <div className="courses-grid">
-            {courses.map(c => (
-              <div className={`course-card${c.featured ? ' featured' : ''}`} key={c.name}>
+            {courses.map((c, idx) => (
+              <div className={`course-card${c.featured ? ' featured' : ''}${c.variant === 'secondary' ? ' course-card-secondary' : ''}${c.variant === 'tertiary' ? ' course-card-tertiary' : ''}`} key={c.name}>
                 <span className="course-card-tag">{c.tag}</span>
                 <div className="course-name">{c.name}</div>
                 <div className="course-duration">{c.duration}</div>
@@ -1157,8 +1335,8 @@ Through interactions with serving officers, assessors, and successful candidates
             <h3 className="sec-h2" style={{ textAlign: 'center', fontSize: 'clamp(1.4rem, 2.5vw, 2rem)', letterSpacing: '0.02em', textTransform: 'uppercase', marginBottom: 16, color: '#FFFFFF' }}>Real Experiences. Real Preparation. Real Results.</h3>
             <p className="sec-desc" style={{ color: 'rgba(255,255,255,0.4)', maxWidth: '800px', margin: '0 auto', textAlign: 'center', lineHeight: 1.8 }}>Listen to candid conversations with SSB recommended candidates, aspirants, and cadets who share how they prepared, the challenges they faced, and what ultimately helped them succeed at the Services Selection Board.</p>
           </div>
-          {/* Video Grid - 3 videos with navigation */}
-          <div style={{ marginBottom: 32, position: 'relative' }}>
+          {/* Video Grid - 3 videos with navigation - Desktop */}
+          <div className="video-carousel-desktop" style={{ marginBottom: 32, position: 'relative' }}>
             {/* Left Arrow */}
             <button 
               onClick={() => setCurrentVideoIndex((currentVideoIndex - 3 + videoIds.length) % videoIds.length)} 
@@ -1181,12 +1359,44 @@ Through interactions with serving officers, assessors, and successful candidates
               <ArrowRight size={18} />
             </button>
           </div>
+          {/* Video Carousel - Mobile */}
+          <div className="video-carousel-mobile" style={{ marginBottom: 32, display: 'none' }}>
+            <div className="video-carousel">
+              <div className="video-carousel-track" style={{ transform: `translateX(-${currentMobileVideoIndex * 100}%)` }}>
+                {videoIds.map((videoId, idx) => (
+                  <div className="video-carousel-slide" key={idx}>
+                    <div style={{ aspectRatio: '16/9', background: '#0D1710', borderRadius: 8, overflow: 'hidden' }}>
+                      <iframe width="100%" height="100%" src={`https://www.youtube.com/embed/${videoId}`} title="YouTube video" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button className="video-carousel-btn prev" onClick={() => setCurrentMobileVideoIndex((currentMobileVideoIndex - 1 + videoIds.length) % videoIds.length)}><ArrowLeft size={16} /></button>
+              <button className="video-carousel-btn next" onClick={() => setCurrentMobileVideoIndex((currentMobileVideoIndex + 1) % videoIds.length)}><ArrowRight size={16} /></button>
+              <div className="video-carousel-dots">
+                {videoIds.map((_, idx) => (
+                  <button key={idx} className={`video-carousel-dot ${idx === currentMobileVideoIndex ? 'active' : ''}`} onClick={() => setCurrentMobileVideoIndex(idx)} />
+                ))}
+              </div>
+            </div>
+          </div>
           {/* Channel Link Button */}
           <div style={{ textAlign: 'center' }}>
             <a href="https://www.youtube.com/@CadetAA/videos" target="_blank" rel="noopener noreferrer" style={{ background: '#C8A84B', color: '#0D1710', border: 'none', padding: '14px 32px', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', cursor: 'pointer', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
               View More Videos <ArrowRight size={16} />
             </a>
           </div>
+        </div>
+      </section>
+
+      {/* ── ACCESS FREE PLATFORM ── */}
+      <section style={{ background: '#000000', padding: '80px 32px' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 'clamp(2rem, 4vw, 3rem)', color: '#FFFFFF', letterSpacing: '0.05em', marginBottom: 16 }}>ACCESS FREE PLATFORM</h2>
+          <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,0.6)', marginBottom: 32, lineHeight: 1.7 }}>Practice TAT, WAT, SRT & PPDT under real SSB timing. Unlimited attempts. Free for all registered candidates.</p>
+          <Link to="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, background: '#C8A84B', color: '#0D1710', padding: '16px 40px', fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', textDecoration: 'none', borderRadius: 4, transition: 'all 0.25s' }}>
+            Start Free Practice <ArrowRight size={18} />
+          </Link>
         </div>
       </section>
 
@@ -1202,13 +1412,12 @@ Through interactions with serving officers, assessors, and successful candidates
             <Link to="/register" className="btn-primary" style={{ fontSize: 15, padding: '18px 48px', fontWeight: 600 }} onClick={() => trackEvent('cta_final')}>
               Enrol in a Batch <ArrowRight size={18} />
             </Link>
-            <Link to="/register" className="btn-outline" style={{ fontSize: 15, padding: '18px 48px', fontWeight: 600 }} onClick={() => trackEvent('cta_platform_final')}>
-              Access Free Platform
-            </Link>
           </div>
           <p className="enroll-note">OFFLINE · ONLINE · DIGITAL — All preparation under one institute</p>
         </div>
       </section>
+
+      <WhatsAppFloatButton />
 
       <FooterSection />
     </>

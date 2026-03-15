@@ -1,159 +1,323 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Label } from '@/components/ui/label';
-import { useTestConfig } from '@/hooks/useTestData';
-import { ArrowLeft, Clock, Target, Eye, PenTool } from 'lucide-react';
-
-const ppdtSetOptions = [
-  { value: 5, label: '5 Pictures', duration: 22.5, description: 'Quick assessment set', perItemTime: 30 },
-  { value: 10, label: '10 Pictures', duration: 45, description: 'Standard practice set', perItemTime: 30 },
-  { value: 15, label: '15 Pictures', duration: 67.5, description: 'Comprehensive test set', perItemTime: 30 }
-];
+import {
+  ArrowLeft,
+  Clock,
+  CheckCircle,
+  Lock,
+  Star,
+  Crown,
+  Target,
+  Eye,
+  PenTool,
+} from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { loadRazorpayScript, createRazorpayOrder } from '@/lib/razorpay';
+import { getCompletedSets } from '@/utils/practiceHistory';
 
 export default function PPDTSetSelectionPage() {
   const navigate = useNavigate();
-  const config = useTestConfig('ppdt');
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [selectedSet, setSelectedSet] = useState<number>(1);
+  const { user } = useAuth();
+  const [selectedSet, setSelectedSet] = useState<number | null>(null);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [completedSets, setCompletedSets] = useState<string[]>([]);
 
-  if (!config) {
-    return <div>Test not found</div>;
-  }
+  const isPremium = user?.isPremium || false;
+  const FREE_SETS = 5;
 
-  const selectedConfig = ppdtSetOptions.find(opt => opt.value === selectedOption);
+  // Load completed sets
+  useEffect(() => {
+    if (user) {
+      const completed = getCompletedSets(user.id, 'ppdt');
+      setCompletedSets(completed);
+    }
+  }, [user]);
+
+  const isSetCompleted = (set: number) => completedSets.includes(`set${set}`);
+
+  const handleSetClick = (set: number) => {
+    if (set > FREE_SETS && !isPremium) {
+      setShowPremiumModal(true);
+      return;
+    }
+    setSelectedSet(set);
+  };
+
+  const handleStartTest = () => {
+    if (selectedSet) {
+      navigate(`/ppdt/test?set=set${selectedSet}`);
+    }
+  };
+
+  const handleRazorpayPayment = async () => {
+    setLoading(true);
+    try {
+      await loadRazorpayScript();
+      
+      if (!user) {
+        alert('Please login first');
+        setShowPremiumModal(false);
+        navigate('/login');
+        return;
+      }
+
+      await createRazorpayOrder(
+        user.fullName,
+        user.email,
+        user.phoneNumber || ''
+      );
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('Failed to load payment gateway. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Test mode - unlock premium without payment (for testing only)
+  const handleTestPremium = async () => {
+    if (!user) {
+      alert('Please login first');
+      setShowPremiumModal(false);
+      navigate('/login');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const { upgradeUserToPremium } = await import('@/lib/razorpay');
+      await upgradeUserToPremium('test_payment_' + Date.now());
+      alert('🎉 Premium activated for testing! All sets are now unlocked.');
+      setShowPremiumModal(false);
+    } catch (error) {
+      console.error('Test premium error:', error);
+      alert('Failed to activate test premium. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Button variant="ghost" onClick={() => navigate('/ppdt/instructions')} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Instructions
-        </Button>
+    <div className="min-h-screen bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
 
-        <Card className="border-2">
-          <CardHeader className="bg-primary/5">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-12 h-12 rounded-lg bg-primary flex items-center justify-center">
-                <Target className="w-6 h-6 text-primary-foreground" />
+      {/* Premium Modal */}
+      {showPremiumModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <div className="text-center">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
+                <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
               </div>
-              <div>
-                <Badge className="mb-2">PPDT</Badge>
-                <CardTitle className="heading-md">Select Test Configuration</CardTitle>
-              </div>
-            </div>
-            <p className="text-muted-foreground">
-              Choose a set and number of pictures for your PPDT practice session
-            </p>
-          </CardHeader>
-
-          <CardContent className="pt-6 space-y-6">
-            {/* Set Selection */}
-            <div className="space-y-2">
-              <Label htmlFor="set-select" className="text-sm font-semibold">
-                Select Set
-              </Label>
-              <select
-                id="set-select"
-                value={selectedSet}
-                onChange={(e) => setSelectedSet(Number(e.target.value))}
-                className="w-full p-3 border-2 border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary bg-background"
-              >
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((set) => (
-                  <option key={set} value={set}>
-                    Set {set}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Choose from 10 different sets of practice pictures
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Unlock All 10 Sets</h2>
+              <p className="text-slate-600 mb-4 sm:mb-6 text-sm">
+                Get access to Sets 6-10 and practice with all PPDT scenarios!
               </p>
-            </div>
-
-            {/* Options Grid */}
-            <div className="grid md:grid-cols-3 gap-4">
-              {ppdtSetOptions.map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => setSelectedOption(option.value)}
-                  className={`p-6 rounded-xl border-2 transition-all text-left ${
-                    selectedOption === option.value
-                      ? 'border-primary bg-primary/5 shadow-md'
-                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge variant={selectedOption === option.value ? 'default' : 'outline'}>
-                      {option.value}
-                    </Badge>
-                    {selectedOption === option.value && (
-                      <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <div className="w-2 h-2 rounded-full bg-white" />
-                      </div>
-                    )}
-                  </div>
-                  <p className="font-semibold mb-2">{option.label}</p>
-                  <p className="text-sm text-muted-foreground mb-3">{option.description}</p>
-                  <div className="space-y-1 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      <span>{option.duration} min total</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Eye className="w-4 h-4" />
-                      <span>{option.perItemTime}s viewing per picture</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <PenTool className="w-4 h-4" />
-                      <span>4 min writing per picture</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Selected Configuration Details */}
-            {selectedConfig && (
-              <div className="bg-muted/50 rounded-lg p-6 space-y-4">
-                <h3 className="font-semibold text-lg">Test Configuration</h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-3">
-                    <Eye className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Pictures</p>
-                      <p className="font-semibold">{selectedConfig.value} pictures</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Clock className="w-5 h-5 text-primary" />
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Duration</p>
-                      <p className="font-semibold">{selectedConfig.duration} minutes</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  <p>• {selectedConfig.perItemTime} seconds to view each picture</p>
-                  <p>• 4 minutes to write story for each picture</p>
-                </div>
+              
+              <div className="bg-amber-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 text-left">
+                <p className="font-semibold text-amber-800 mb-2 text-sm">Premium Benefits:</p>
+                <ul className="text-xs sm:text-sm text-amber-700 space-y-1">
+                  <li>✓ Access to Sets 6-10</li>
+                  <li>✓ All WAT, SRT, TAT sets</li>
+                  <li>✓ Priority support</li>
+                  <li>✓ No advertisements</li>
+                </ul>
               </div>
-            )}
 
-            {/* Start Button */}
-            <div className="flex justify-center pt-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setShowPremiumModal(false)}
+                >
+                  Maybe Later
+                </Button>
+                <Button
+                  className="flex-1 bg-amber-600 hover:bg-amber-700"
+                  onClick={handleRazorpayPayment}
+                  disabled={loading}
+                >
+                  {loading ? 'Loading...' : 'Pay ₹1'}
+                </Button>
+              </div>
+              <p className="text-xs text-center text-slate-500 mt-3">
+                Test mode: QR payment may not work. Use "Pay ₹1" card payment or click below to test.
+              </p>
               <Button
-                size="lg"
-                disabled={!selectedOption}
-                onClick={() => navigate(`/ppdt/test?set=set${selectedSet}&count=${selectedOption}`)}
-                className="px-12"
+                variant="link"
+                className="w-full mt-2 text-xs text-blue-600"
+                onClick={handleTestPremium}
+                disabled={loading}
               >
-                Start PPDT Test
+                🧪 Test Premium (No Payment)
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+      )}
+
+      {/* Top Header */}
+      <div className="max-w-6xl mx-auto bg-white border rounded-lg px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+        <div>
+          <h1 className="text-base sm:text-lg font-semibold text-slate-900">
+            PPDT Set Selection
+          </h1>
+          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs sm:text-sm">
+            <Badge variant="secondary">SSB Psychological Test</Badge>
+            <span className="text-blue-600 font-medium">
+              Select one PPDT set
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {isPremium ? (
+            <Badge className="bg-amber-500 text-xs">
+              <Crown className="w-3 h-3 mr-1" />
+              Premium
+            </Badge>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-600 border-amber-300 flex-1 sm:flex-none"
+              onClick={() => setShowPremiumModal(true)}
+            >
+              <Star className="w-4 h-4 mr-1" />
+              Upgrade - ₹1
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/ppdt/instructions')}
+            className="flex items-center gap-2 flex-1 sm:flex-none justify-center"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+        </div>
+      </div>
+
+      {/* Main Card */}
+      <div className="max-w-6xl mx-auto bg-white border rounded-xl shadow-sm p-4 sm:p-6">
+
+        {/* Blue Info Box */}
+        <div className="bg-blue-100 text-blue-900 rounded-md px-3 py-3 mb-4 sm:mb-6 text-xs sm:text-sm">
+          <strong>Important:</strong> Each PPDT set contains <strong>10 pictures</strong>. Total time: ~45 minutes (30 seconds viewing + 4 minutes writing per picture).
+        </div>
+
+        {/* Flow Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8 text-xs sm:text-sm">
+
+          <div className="border rounded-lg p-3 flex flex-col items-center text-center gap-2">
+            <Eye className="w-5 h-5 text-slate-700" />
+            <div>
+              <p className="font-semibold">Viewing</p>
+              <p className="text-slate-600 text-xs">30 seconds</p>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3 flex flex-col items-center text-center gap-2">
+            <PenTool className="w-5 h-5 text-slate-700" />
+            <div>
+              <p className="font-semibold">Writing</p>
+              <p className="text-slate-600 text-xs">4 minutes</p>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3 flex flex-col items-center text-center gap-2">
+            <Target className="w-5 h-5 text-slate-700" />
+            <div>
+              <p className="font-semibold">Pictures</p>
+              <p className="text-slate-600 text-xs">10 per set</p>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3 flex flex-col items-center text-center gap-2">
+            <Clock className="w-5 h-5 text-slate-700" />
+            <div>
+              <p className="font-semibold">Total</p>
+              <p className="text-slate-600 text-xs">~45 min</p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Set Grid */}
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 mb-6">
+          {Array.from({ length: 10 }, (_, i) => i + 1).map((set) => {
+            const isLocked = set > FREE_SETS && !isPremium;
+            const isCompleted = isSetCompleted(set);
+            
+            return (
+              <button
+                key={set}
+                onClick={() => handleSetClick(set)}
+                disabled={isLocked}
+                className={`border rounded-lg p-3 sm:p-4 text-center transition relative ${
+                  selectedSet === set
+                    ? 'border-blue-600 bg-blue-50'
+                    : isCompleted
+                      ? 'border-emerald-300 bg-emerald-50 hover:border-emerald-400'
+                      : isLocked
+                        ? 'bg-slate-50 cursor-not-allowed'
+                        : 'border-slate-200 hover:border-blue-400'
+                }`}
+              >
+                {isLocked && (
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                    <Lock className="w-3 h-3 sm:w-4 sm:h-4 text-slate-400" />
+                  </div>
+                )}
+                
+                {isCompleted && !isLocked && (
+                  <div className="absolute top-1 left-1 sm:top-2 sm:left-2">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-600" />
+                  </div>
+                )}
+                
+                <p className={`text-sm sm:text-base font-semibold ${isLocked ? 'text-slate-400' : isCompleted ? 'text-emerald-700' : 'text-slate-900'}`}>
+                  Set {set}
+                </p>
+                <p className={`text-xs mt-1 ${isLocked ? 'text-slate-300' : isCompleted ? 'text-emerald-600' : 'text-slate-600'}`}>
+                  {isLocked ? '🔒' : isCompleted ? '✓ Completed' : '10 pics'}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Selected Set Summary */}
+        {selectedSet && (
+          <div className="border border-blue-200 bg-blue-50 rounded-md p-3 sm:p-4 text-xs sm:text-sm text-slate-700 mb-4 sm:mb-6">
+            <p className="font-semibold mb-2 flex items-center gap-2 text-blue-700">
+              <CheckCircle className="w-4 h-4" />
+              Selected: Set {selectedSet}
+            </p>
+            <ul className="list-disc ml-6 space-y-1">
+              <li>10 pictures in this set</li>
+              <li>30 seconds picture viewing per image</li>
+              <li>4 minutes story writing per image</li>
+              <li>Total time: ~45 minutes</li>
+            </ul>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="flex justify-center">
+          <Button
+            size="lg"
+            disabled={!selectedSet}
+            onClick={handleStartTest}
+            className="px-8 sm:px-12 bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+          >
+            Start PPDT Set {selectedSet}
+          </Button>
+        </div>
+
       </div>
     </div>
   );

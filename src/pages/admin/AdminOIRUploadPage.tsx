@@ -100,7 +100,7 @@ export default function OIRUploadPage() {
       await saveOIRSet(setId, questions);
       setMessage({ type: 'success', text: `Successfully saved ${questions.length} questions to ${setId}` });
       setQuestions([]);
-      setSetId('');
+      // Keep setId so user can add more questions to the same set
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
     } finally {

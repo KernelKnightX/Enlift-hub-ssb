@@ -17,8 +17,8 @@ const css = `
   /* HERO */
   .bp-hero { padding: 56px 48px 0; }
   .bp-eyebrow { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; font-family: system-ui; margin-bottom: 20px; }
-  .bp-h1 { font-size: clamp(1.8rem, 3.5vw, 3.2rem); font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 28px; max-width: 820px; }
-  .bp-lead { font-size: 1.1rem; line-height: 1.85; color: #444; max-width: 700px; margin-bottom: 56px; font-style: italic; }
+  .bp-h1 { font-size: clamp(1.8rem, 3.5vw, 3.2rem); font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 28px; max-width: 100%; }
+  .bp-lead { font-size: 1.1rem; line-height: 1.85; color: #444; max-width: 100%; margin-bottom: 56px; font-style: italic; }
 
   /* NAV ANCHORS */
   .bp-anav { display: flex; gap: 0; border-top: 1px solid #e0ddd8; border-bottom: 1px solid #e0ddd8; margin-bottom: 0; overflow-x: auto; }
@@ -27,7 +27,7 @@ const css = `
   .bp-anav a.active { color: #1a1a1a; background: #f5f3f0; font-weight: 600; }
 
   /* MAIN */
-  .bp-main { padding: 0 48px; max-width: 1200px; margin: 0 auto; }
+  .bp-main { padding: 0 48px; max-width: 1400px; margin: 0 auto; }
 
   /* BLOG GRID */
   .bp-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 32px; padding: 72px 0 64px; }
@@ -42,7 +42,7 @@ const css = `
   .bp-card-meta span { display: flex; align-items: center; gap: 4px; }
 
   /* SINGLE BLOG POST */
-  .bp-single { max-width: 800px; margin: 0 auto; padding: 48px 0 80px; }
+  .bp-single { max-width: 100%; margin: 0 auto; padding: 48px 0 80px; }
   .bp-single-header { margin-bottom: 40px; }
   .bp-single-cat { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; font-family: system-ui; margin-bottom: 16px; }
   .bp-single-title { font-size: clamp(1.8rem, 3vw, 2.8rem); font-weight: 400; line-height: 1.2; margin-bottom: 24px; font-family: Georgia, serif; }

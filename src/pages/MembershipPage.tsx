@@ -15,6 +15,7 @@ import { addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router';
 import { NavbarSection } from '@/pages/navbar/NavbarSection';
+import { WhatsAppFloatButton } from '@/components/WhatsAppFloatButton';
 
 interface FormData {
   name: string;
@@ -66,8 +67,20 @@ export default function MembershipPage() {
       <NavbarSection />
       
       {/* Full Width Header */}
-      <div className="bg-slate-900 text-white py-12 px-6 pt-24">
-        <div className="max-w-4xl mx-auto">
+      <div className="bg-slate-900 text-white py-12 px-6 pt-24 relative overflow-hidden">
+        {/* Decorative gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
+        <div className="absolute top-0 right-0 w-1/2 h-full opacity-10">
+          <div className="absolute inset-0 bg-gradient-to-l from-purple-500/30 to-transparent" />
+        </div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 opacity-10">
+          <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/30 to-transparent rounded-full" />
+        </div>
+        {/* Decorative shapes */}
+        <div className="absolute top-20 right-20 w-32 h-32 border border-purple-500/20 rounded-full" />
+        <div className="absolute bottom-10 right-40 w-20 h-20 bg-purple-500/10 rounded-lg rotate-12" />
+        
+        <div className="max-w-4xl mx-auto relative z-10">
           <Button
             variant="ghost"
             onClick={() => navigate('/')}
@@ -254,3 +267,5 @@ export default function MembershipPage() {
     </div>
   );
 }
+
+<WhatsAppFloatButton />

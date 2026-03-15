@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router';
+import { useEffect } from 'react';
 import { NavbarSection } from '@/pages/navbar/NavbarSection';
 import { FooterSection } from '@/pages/navbar/FooterSection';
 
@@ -162,23 +163,23 @@ const stages = [
 ];
 
 const css = `
-  .sp { min-height: 100vh; background: #fafaf8; color: #1a1a1a; font-family: Georgia, serif; }
+  .sp { min-height: 100vh; background: #fafaf8; color: #1a1a1a; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
   .sp > * { box-sizing: border-box; }
 
   .sp-back { padding: 24px 48px 0; }
-  .sp-back-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: #666; letter-spacing: 0.05em; font-family: system-ui, sans-serif; }
+  .sp-back-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: #666; letter-spacing: 0.05em; font-family: 'Inter', system-ui, sans-serif; }
   .sp-back-btn:hover { color: #1a1a1a; }
 
   /* HERO */
-  .sp-hero { padding: 56px 48px 0; }
-  .sp-eyebrow { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; font-family: system-ui; margin-bottom: 20px; }
-  .sp-h1 { font-size: clamp(1.9rem, 3.5vw, 3.2rem); font-weight: 400; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 28px; max-width: 720px; }
-  .sp-lead { font-size: 1.1rem; line-height: 1.85; color: #444; max-width: 680px; margin-bottom: 48px; font-style: italic; }
+  .sp-hero { padding: 100px 48px 0; }
+  .sp-eyebrow { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; font-family: 'Inter', system-ui; margin-bottom: 20px; }
+  .sp-h1 { font-size: clamp(1.8rem, 4vw, 3rem); font-weight: 700; line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 28px; text-align: center; }
+  .sp-lead { font-size: 1.1rem; line-height: 1.85; color: #444; max-width: 1880px; margin-bottom: 48px; font-style: italic; width: 100%; }
 
   /* ANCHOR NAV */
-  .sp-anav { display: flex; border-top: 1px solid #e0ddd8; border-bottom: 1px solid #e0ddd8; overflow-x: auto; }
-  .sp-anav a { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-family: system-ui; color: #666; text-decoration: none; padding: 14px 20px; border-right: 1px solid #e0ddd8; white-space: nowrap; flex-shrink: 0; }
-  .sp-anav a:hover { color: #1a1a1a; background: #f5f3f0; }
+  .sp-anav { display: flex; border-top: 1px solid #e0ddd8; border-bottom: 1px solid #e0ddd8; overflow-x: auto; background: #1a1a1a; }
+  .sp-anav a { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-family: 'Inter', system-ui; color: #fff; text-decoration: none; padding: 14px 20px; border-right: 1px solid #444; white-space: nowrap; flex-shrink: 0; }
+  .sp-anav a:hover { color: #C8A84B; background: #333; }
 
   /* MAIN */
   .sp-main { padding: 0 48px; }
@@ -188,24 +189,24 @@ const css = `
   .sp-stage:first-child { border-top: none; padding-top: 64px; }
 
   /* STAGE HEADER */
-  .sp-stage-hdr { display: grid; grid-template-columns: 200px 1fr; gap: 60px; margin-bottom: 48px; align-items: start; }
+  .sp-stage-hdr { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 48px; align-items: baseline; }
   .sp-stage-left { }
-  .sp-stage-day { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; font-family: system-ui; margin-bottom: 8px; }
-  .sp-stage-title { font-size: 2rem; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 6px; }
-  .sp-stage-sub { font-size: 13px; color: #888; font-family: system-ui; }
+  .sp-stage-day { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: #888; font-family: 'Inter', system-ui; margin-bottom: 8px; }
+  .sp-stage-title { font-size: 1.5rem; font-weight: 400; letter-spacing: -0.02em; margin-bottom: 6px; white-space: nowrap; }
+  .sp-stage-sub { font-size: 13px; color: #888; font-family: 'Inter', system-ui; white-space: nowrap; }
   .sp-stage-right { }
 
   /* STAGE IMAGE */
   .sp-stage-img-wrap { width: 100%; overflow: hidden; background: #ccc; margin-bottom: 56px; }
   .sp-stage-img-wrap img { width: 100%; height: 360px; object-fit: cover; object-position: center; display: block; }
-  .sp-stage-img-cap { font-size: 12px; color: #888; font-family: system-ui; padding: 10px 0 0; }
+  .sp-stage-img-cap { font-size: 12px; color: #888; font-family: 'Inter', system-ui; padding: 10px 0 0; }
 
   /* TESTS */
   .sp-tests { display: flex; flex-direction: column; gap: 0; margin-bottom: 72px; }
   .sp-test { display: grid; grid-template-columns: 280px 1fr; gap: 60px; padding: 36px 0; border-top: 1px solid #e8e6e1; }
   .sp-test-left { }
   .sp-test-name { font-size: 1rem; font-weight: 600; margin-bottom: 6px; line-height: 1.3; }
-  .sp-test-time { font-size: 12px; color: #888; font-family: system-ui; letter-spacing: 0.04em; }
+  .sp-test-time { font-size: 12px; color: #888; font-family: 'Inter', system-ui; letter-spacing: 0.04em; }
   .sp-test-right { }
   .sp-test-para { font-size: 0.975rem; line-height: 1.85; color: #333; margin-bottom: 14px; }
   .sp-test-para:last-child { margin-bottom: 0; }
@@ -218,25 +219,23 @@ const css = `
   .sp-cta-h { font-size: 1.35rem; font-weight: 400; margin-bottom: 6px; }
   .sp-cta-sub { font-size: 0.9rem; color: #666; }
   .sp-cta-btns { display: flex; gap: 14px; flex-shrink: 0; }
-  .sp-btn-dark { padding: 13px 26px; background: #1a1a1a; color: #fff; border: none; cursor: pointer; font-size: 13px; letter-spacing: 0.04em; font-family: system-ui; }
-  .sp-btn-out { padding: 13px 26px; background: transparent; color: #1a1a1a; border: 1px solid #1a1a1a; cursor: pointer; font-size: 13px; letter-spacing: 0.04em; font-family: system-ui; }
+  .sp-btn-dark { padding: 13px 26px; background: #1a1a1a; color: #fff; border: none; cursor: pointer; font-size: 13px; letter-spacing: 0.04em; font-family: 'Inter', system-ui; }
+  .sp-btn-out { padding: 13px 26px; background: transparent; color: #1a1a1a; border: 1px solid #1a1a1a; cursor: pointer; font-size: 13px; letter-spacing: 0.04em; font-family: 'Inter', system-ui; }
 
   /* PROGRESS STRIP */
   .sp-progress { display: flex; align-items: stretch; background: #e0ddd8; gap: 1px; margin: 48px 0 0; }
   .sp-progress-item { background: #fafaf8; flex: 1; padding: 16px 14px; }
-  .sp-progress-day { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #999; font-family: system-ui; margin-bottom: 4px; }
+  .sp-progress-day { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #999; font-family: 'Inter', system-ui; margin-bottom: 4px; }
   .sp-progress-label { font-size: 12px; font-weight: 500; }
 
   /* ── RESPONSIVE ── */
   @media (max-width: 960px) {
-    .sp-stage-hdr { grid-template-columns: 1fr; gap: 0; }
-    .sp-stage-title { font-size: 1.7rem; }
+    .sp-stage-title { font-size: 1.2rem; }
     .sp-test { grid-template-columns: 220px 1fr; gap: 36px; }
   }
 
   @media (max-width: 760px) {
-    .sp-back { padding: 20px 24px 0; }
-    .sp-hero { padding: 40px 24px 0; }
+    .sp-hero { padding: 80px 24px 0; }
     .sp-main { padding: 0 24px; }
     .sp-h1 { font-size: clamp(1.5rem, 5vw, 2.2rem); }
     .sp-test { grid-template-columns: 1fr; gap: 12px; }
@@ -249,9 +248,8 @@ const css = `
   }
 
   @media (max-width: 520px) {
-    .sp-back { padding: 16px 16px 0; }
-    .sp-hero { padding: 28px 16px 0; }
-    .sp-main { padding: 0 16px; }
+    .sp-hero { padding: 72px 16px 0; }
+    .sp-main { padding: 0 16px; text-align: justify; }
     .sp-h1 { font-size: 1.5rem; }
     .sp-lead { font-size: 0.95rem; }
     .sp-stage-title { font-size: 1.4rem; }
@@ -274,22 +272,45 @@ const stageTips = {
 export default function SSBProcessPage() {
   const navigate = useNavigate();
 
+  // SEO Meta Tags
+  useEffect(() => {
+    // Scroll to top on page load
+    window.scrollTo(0, 0);
+    
+    document.title = 'SSB Process 2024 | Complete 5-Day Selection Guide | Enlift Hub';
+    
+    // Set or update meta description
+    let metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', 'Complete SSB Process guide 2024. Learn about the 5-day selection procedure: OIR, PPDT, TAT, WAT, SRT, GTO tasks, interview and conference. Expert guidance for Indian Armed Forces selection.');
+    } else {
+      metaDesc = document.createElement('meta');
+      metaDesc.name = 'description';
+      metaDesc.content = 'Complete SSB Process guide 2024. Learn about the 5-day selection procedure: OIR, PPDT, TAT, WAT, SRT, GTO tasks, interview and conference. Expert guidance for Indian Armed Forces selection.';
+      document.head.appendChild(metaDesc);
+    }
+
+    // Add keywords meta tag
+    let metaKeywords = document.querySelector('meta[name="keywords"]');
+    if (!metaKeywords) {
+      metaKeywords = document.createElement('meta');
+      metaKeywords.name = 'keywords';
+      metaKeywords.content = 'SSB process, SSB 5 days, SSB screening, SSB psychology tests, SSB GTO, SSB interview, SSB conference, Indian Army selection, NDA SSB, CDS SSB';
+      document.head.appendChild(metaKeywords);
+    }
+  }, []);
+
   return (
     <>
       <NavbarSection />
       <div className="sp">
         <style>{css}</style>
 
-        <div className="sp-back pt-16">
-        <button className="sp-back-btn" onClick={() => navigate('/')}>← Back to Home</button>
-      </div>
-
       {/* HERO */}
       <header className="sp-hero">
-        <div className="sp-eyebrow">Indian Armed Forces · Officer Selection</div>
-        <h1 className="sp-h1">The 5-Day SSB Process</h1>
+        <h1 className="sp-h1">SSB Process : Complete Guide to 5-Day Selection Procedure</h1>
         <p className="sp-lead">
-          Every stage of the SSB is calibrated to observe a different dimension of the same person. Understanding what each stage is actually measuring — not just what it consists of — is the foundation of effective preparation.
+          Every stage of the SSB is calibrated to observe a different dimension of the same person. Understanding what each stage is actually measuring, not just what it consists of - is the foundation of effective preparation.
         </p>
 
         {/* Progress strip */}

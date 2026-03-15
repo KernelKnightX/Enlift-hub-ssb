@@ -49,7 +49,7 @@ const styles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   .page {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     color: #111;
     background: #fff;
     line-height: 1.5;
@@ -69,10 +69,10 @@ const styles = `
     margin-bottom: 14px;
   }
   .hero h1 {
-    font-size: clamp(2rem, 4vw, 3rem);
-    font-weight: 800;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 700;
     letter-spacing: -0.02em;
-    line-height: 1.1;
+    line-height: 1.2;
     margin-bottom: 16px;
   }
   .hero p {
@@ -244,6 +244,7 @@ const styles = `
 
   @media (max-width: 480px) {
     .hero        { padding: 72px 16px 40px; }
+    .hero p     { text-align: justify; }
     .olq-section { padding: 28px 16px 36px; }
     .section     { padding: 36px 16px; }
     .divider     { margin: 0 16px; }
