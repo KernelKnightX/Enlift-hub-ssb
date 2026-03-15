@@ -649,7 +649,7 @@ export default function DashboardPage() {
                     '--mc-accent': mod.accent,
                     '--mc-light': mod.accentLight,
                     animationDelay: `${0.15 + i * 0.07}s`,
-                  }}
+                  } as React.CSSProperties}
                 >
                   <div className="db-mod-stripe" style={{ background: mod.stripe }} />
                   <div className="db-mod-body">
@@ -685,7 +685,7 @@ export default function DashboardPage() {
                     '--mc-accent': mod.accent,
                     '--mc-light': mod.accentLight,
                     animationDelay: `${0.3 + i * 0.07}s`,
-                  }}
+                  } as React.CSSProperties}
                 >
                   <div className="db-mod-stripe" style={{ background: mod.stripe }} />
                   <div className="db-mod-body">
@@ -707,7 +707,7 @@ export default function DashboardPage() {
             <Link
               to="/mentorship"
               className="db-feat-card"
-              style={{ '--fc-accent': '#059669', '--fc-light': '#ecfdf5', animationDelay: '0.55s' }}
+              style={{ '--fc-accent': '#059669', '--fc-light': '#ecfdf5', animationDelay: '0.55s' } as React.CSSProperties}
             >
               <div className="db-feat-icon-wrap"><Users size={21} color="#059669" /></div>
               <div>
@@ -721,7 +721,7 @@ export default function DashboardPage() {
             <Link
               to="/ssb-preparation"
               className="db-feat-card"
-              style={{ '--fc-accent': '#7c3aed', '--fc-light': '#f5f3ff', animationDelay: '0.62s' }}
+              style={{ '--fc-accent': '#7c3aed', '--fc-light': '#f5f3ff', animationDelay: '0.62s' } as React.CSSProperties}
             >
               <div className="db-feat-icon-wrap"><BookOpen size={21} color="#7c3aed" /></div>
               <div>

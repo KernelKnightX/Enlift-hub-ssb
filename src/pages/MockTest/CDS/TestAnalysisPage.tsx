@@ -367,7 +367,7 @@ export default function TestAnalysisPage() {
 
   // FIX: derive initial from real user data instead of hardcoded "A"
   const avatarInitial =
-    user?.displayName?.[0]?.toUpperCase() ||
+    user?.fullName?.[0]?.toUpperCase() ||
     user?.email?.[0]?.toUpperCase() ||
     "?";
 

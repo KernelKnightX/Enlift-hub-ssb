@@ -280,7 +280,7 @@ export default function SSBProcessPage() {
     document.title = 'SSB Process 2024 | Complete 5-Day Selection Guide | Enlift Hub';
     
     // Set or update meta description
-    let metaDesc = document.querySelector('meta[name="description"]');
+    let metaDesc = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
     if (metaDesc) {
       metaDesc.setAttribute('content', 'Complete SSB Process guide 2024. Learn about the 5-day selection procedure: OIR, PPDT, TAT, WAT, SRT, GTO tasks, interview and conference. Expert guidance for Indian Armed Forces selection.');
     } else {
@@ -291,7 +291,7 @@ export default function SSBProcessPage() {
     }
 
     // Add keywords meta tag
-    let metaKeywords = document.querySelector('meta[name="keywords"]');
+    let metaKeywords = document.querySelector('meta[name="keywords"]') as HTMLMetaElement | null;
     if (!metaKeywords) {
       metaKeywords = document.createElement('meta');
       metaKeywords.name = 'keywords';
@@ -349,7 +349,7 @@ export default function SSBProcessPage() {
               <img
                 src={stage.img}
                 alt={stage.imgAlt}
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
               <div className="sp-stage-img-cap">{stage.imgCaption}</div>
             </div>
@@ -372,7 +372,7 @@ export default function SSBProcessPage() {
 
               {/* Assessor tip */}
               <div className="sp-tip">
-                <strong>What assessors are actually watching:</strong> {stageTips[stage.id]}
+                <strong>What assessors are actually watching:</strong> {stageTips[stage.id as keyof typeof stageTips]}
               </div>
             </div>
 

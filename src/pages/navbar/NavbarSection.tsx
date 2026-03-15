@@ -239,7 +239,7 @@ export function NavbarSection() {
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       // Don't close dropdown if clicking on dropdown items or the dropdown button
-      const target = e.target as Node;
+      const target = e.target as Element;
       const isDropdownItem = target.closest('.nav-dropdown-item');
       const isDropdownBtn = target.closest('.nav-dropdown-btn');
       const isDropdown = target.closest('.nav-dropdown');

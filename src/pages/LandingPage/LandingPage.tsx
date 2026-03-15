@@ -11,7 +11,15 @@ import {
   Monitor, MapPin, Phone, Mail, Play, Quote, BarChart2, Layers,
 } from 'lucide-react';
 
-const trackEvent = (eventName, properties) => {
+export {}; // Make this a module
+
+declare global {
+  interface Window {
+    gtag?: (command: string, eventName: string, params?: Record<string, unknown>) => void;
+  }
+}
+
+const trackEvent = (eventName: string, properties?: Record<string, unknown>) => {
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', eventName, properties);
   }
@@ -863,7 +871,7 @@ const faqs = [
 /* ────────── COMPONENTS ────────── */
 
 function FAQ() {
-  const [open, setOpen] = useState(null);
+  const [open, setOpen] = useState<number | null>(null);
   return (
     <section className="faq sec">
       <div className="faq-inner">

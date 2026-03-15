@@ -18,7 +18,7 @@ export default function VIITTestPage() {
   const count = parseInt(searchParams.get('count') || '40');
   const set = searchParams.get('set') || 'set1';
 
-  const questions = useVIITQuestions(set, count);
+  const { data: questions, loading: questionsLoading } = useVIITQuestions(set, count);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>(Array(count).fill(null));
   const [timeRemaining, setTimeRemaining] = useState(1500); // 25 minutes in seconds
