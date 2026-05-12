@@ -39,6 +39,7 @@ const navItems: NavItem[] = [
     ],
   },
   { label: 'Mentorship', path: '/mentorship' },
+  { label: 'Magazine', path: '/subscription' },
   { label: 'Blogs', path: '/blog' },
 ];
 

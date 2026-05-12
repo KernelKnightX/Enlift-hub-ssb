@@ -7,6 +7,7 @@ const footerLinks = {
     { label: 'About SSB', path: '/ssb-info' },
     { label: 'SSB Process', path: '/ssb-process' },
     { label: 'Practice Tests', path: '/register' },
+    { label: 'Current Affairs', path: '/subscription' },
   ],
   preparation: [
     { label: 'PPDT', path: '/ppdt/instructions' },

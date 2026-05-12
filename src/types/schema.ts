@@ -100,6 +100,72 @@ export interface VIITQuestion {
   correctAnswer: number;
 }
 
+export interface EnglishGrammarQuestion {
+  id: string;
+  category: string;
+  prompt: string;
+  options: string[];
+  correctAnswer: string;
+  explanation: string;
+}
+
+export interface ListeningQuestionData {
+  id: string;
+  category: string;
+  audioWords: string[];
+  options: string[];
+  correctAnswers: string[];
+}
+
+export type SpeedRecognitionDifficulty = 'easy' | 'medium' | 'hard';
+export type SpeedRecognitionAnswerKey = 'A' | 'B' | 'C' | 'D';
+
+export interface SpeedRecognitionQuestion {
+  id: string;
+  targetImage: string;
+  optionA: string;
+  optionB: string;
+  optionC: string;
+  optionD: string;
+  correctAnswer: SpeedRecognitionAnswerKey;
+  difficulty: SpeedRecognitionDifficulty;
+}
+
+export interface PreparedSpeedRecognitionOption {
+  key: SpeedRecognitionAnswerKey;
+  image: string;
+}
+
+export interface PreparedSpeedRecognitionQuestion extends SpeedRecognitionQuestion {
+  options: PreparedSpeedRecognitionOption[];
+}
+
+export interface SpeedRecognitionAnswerRecord {
+  questionId: string;
+  difficulty: SpeedRecognitionDifficulty;
+  selectedAnswer: SpeedRecognitionAnswerKey | null;
+  correctAnswer: SpeedRecognitionAnswerKey;
+  isCorrect: boolean;
+  responseTimeMs: number;
+  timedOut: boolean;
+}
+
+export interface SpeedRecognitionAnalytics {
+  score: number;
+  totalQuestions: number;
+  accuracy: number;
+  correctCount: number;
+  incorrectCount: number;
+  avgReactionTimeMs: number;
+  fastestResponseMs: number;
+  slowestResponseMs: number;
+  difficultyBreakdown: Record<SpeedRecognitionDifficulty, {
+    total: number;
+    correct: number;
+    accuracy: number;
+  }>;
+}
+
 // Practice history
 export interface PracticeSession {
   id: string;

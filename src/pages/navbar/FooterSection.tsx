@@ -86,6 +86,7 @@ export function FooterSection() {
                 { label: 'Register Free', path: '/register' },
                 { label: 'Login', path: '/login' },
                 { label: 'Mentorship', path: '/mentorship' },
+                { label: 'Magazine', path: '/subscription' },
                 { label: 'SSB Preparation Guide', path: '/ssb-preparation' },
                 { label: 'Terms & Conditions', path: '/terms' },
               ].map(l => (
