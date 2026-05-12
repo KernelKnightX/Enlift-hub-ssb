@@ -16,7 +16,17 @@ import {
   deleteObject 
 } from 'firebase/storage';
 import { db, storage } from './firebase';
-import type { WATWord, SRTSituation, TestImage, OIRQuestion } from '@/types/schema';
+import type {
+  EnglishGrammarQuestion,
+  ListeningQuestionData,
+  SpeedRecognitionAnalytics,
+  SpeedRecognitionAnswerRecord,
+  SpeedRecognitionQuestion,
+  WATWord,
+  SRTSituation,
+  TestImage,
+  OIRQuestion
+} from '@/types/schema';
 
 // Collection names
 const COLLECTIONS = {
@@ -25,6 +35,10 @@ const COLLECTIONS = {
   PPDT_IMAGES: 'ppdtImages',
   TAT_IMAGES: 'tatImages',
   OIR_QUESTIONS: 'oirQuestions',
+  ENGLISH_GRAMMAR_QUESTIONS: 'englishGrammarQuestions',
+  LISTENING_QUESTIONS: 'listeningQuestions',
+  SPEED_RECOGNITION_QUESTIONS: 'speedRecognitionQuestions',
+  SPEED_RECOGNITION_ATTEMPTS: 'speedRecognitionAttempts',
 } as const;
 
 // ==================== WAT ====================
@@ -144,6 +158,178 @@ export async function saveOIRSet(setId: string, questions: OIRQuestion[]): Promi
     return setDoc(doc(db, COLLECTIONS.OIR_QUESTIONS, `${setId}_${question.id}`), data);
   });
   await Promise.all(batch);
+}
+
+// ==================== English Grammar & Vocabulary ====================
+
+export async function getEnglishGrammarQuestions(setId: string): Promise<EnglishGrammarQuestion[]> {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.ENGLISH_GRAMMAR_QUESTIONS),
+      where('setId', '==', setId)
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.size === 0) return [];
+
+    const questions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id || doc.id,
+        category: data.category,
+        prompt: data.prompt,
+        options: data.options || [],
+        correctAnswer: data.correctAnswer,
+        explanation: data.explanation || '',
+        order: data.order || 0
+      } as EnglishGrammarQuestion & { order: number };
+    });
+
+    return questions.sort((a, b) => (a.order || 0) - (b.order || 0));
+  } catch (error) {
+    console.error('Error fetching English grammar questions:', error);
+    return [];
+  }
+}
+
+export async function saveEnglishGrammarSet(setId: string, questions: EnglishGrammarQuestion[]): Promise<void> {
+  const batch: Promise<void>[] = questions.map((question, index) => {
+    const data = {
+      ...question,
+      setId,
+      order: index + 1,
+      updatedAt: Timestamp.now()
+    };
+    return setDoc(doc(db, COLLECTIONS.ENGLISH_GRAMMAR_QUESTIONS, `${setId}_${question.id}`), data);
+  });
+  await Promise.all(batch);
+}
+
+export async function deleteEnglishGrammarSet(setId: string): Promise<void> {
+  const q = query(collection(db, COLLECTIONS.ENGLISH_GRAMMAR_QUESTIONS), where('setId', '==', setId));
+  const snapshot = await getDocs(q);
+  const batch: Promise<void>[] = snapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(batch);
+}
+
+// ==================== Listening Test ====================
+
+export async function getListeningQuestions(setId: string): Promise<ListeningQuestionData[]> {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.LISTENING_QUESTIONS),
+      where('setId', '==', setId)
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.size === 0) return [];
+
+    const questions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id || doc.id,
+        category: data.category,
+        audioWords: data.audioWords || [],
+        options: data.options || [],
+        correctAnswers: data.correctAnswers || [],
+        order: data.order || 0
+      } as ListeningQuestionData & { order: number };
+    });
+
+    return questions.sort((a, b) => (a.order || 0) - (b.order || 0));
+  } catch (error) {
+    console.error('Error fetching Listening questions:', error);
+    return [];
+  }
+}
+
+export async function saveListeningSet(setId: string, questions: ListeningQuestionData[]): Promise<void> {
+  const batch: Promise<void>[] = questions.map((question, index) => {
+    const data = {
+      ...question,
+      setId,
+      order: index + 1,
+      updatedAt: Timestamp.now()
+    };
+    return setDoc(doc(db, COLLECTIONS.LISTENING_QUESTIONS, `${setId}_${question.id}`), data);
+  });
+  await Promise.all(batch);
+}
+
+export async function deleteListeningSet(setId: string): Promise<void> {
+  const q = query(collection(db, COLLECTIONS.LISTENING_QUESTIONS), where('setId', '==', setId));
+  const snapshot = await getDocs(q);
+  const batch: Promise<void>[] = snapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(batch);
+}
+
+// ==================== Speed Recognition Test ====================
+
+export async function getSpeedRecognitionQuestions(setId: string): Promise<SpeedRecognitionQuestion[]> {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.SPEED_RECOGNITION_QUESTIONS),
+      where('setId', '==', setId)
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.size === 0) return [];
+
+    const questions = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id || doc.id,
+        targetImage: data.targetImage,
+        optionA: data.optionA,
+        optionB: data.optionB,
+        optionC: data.optionC,
+        optionD: data.optionD,
+        correctAnswer: data.correctAnswer,
+        difficulty: data.difficulty || 'medium',
+        order: data.order || 0,
+      } as SpeedRecognitionQuestion & { order: number };
+    });
+
+    return questions.sort((a, b) => (a.order || 0) - (b.order || 0));
+  } catch (error) {
+    console.error('Error fetching Speed Recognition questions:', error);
+    return [];
+  }
+}
+
+export async function saveSpeedRecognitionSet(setId: string, questions: SpeedRecognitionQuestion[]): Promise<void> {
+  const batch: Promise<void>[] = questions.map((question, index) => {
+    const data = {
+      ...question,
+      setId,
+      order: index + 1,
+      updatedAt: Timestamp.now(),
+    };
+    return setDoc(doc(db, COLLECTIONS.SPEED_RECOGNITION_QUESTIONS, `${setId}_${question.id}`), data);
+  });
+  await Promise.all(batch);
+}
+
+export async function deleteSpeedRecognitionSet(setId: string): Promise<void> {
+  const q = query(collection(db, COLLECTIONS.SPEED_RECOGNITION_QUESTIONS), where('setId', '==', setId));
+  const snapshot = await getDocs(q);
+  const batch: Promise<void>[] = snapshot.docs.map(doc => deleteDoc(doc.ref));
+  await Promise.all(batch);
+}
+
+export async function saveSpeedRecognitionAttempt(payload: {
+  userId: string;
+  setId: string;
+  answers: SpeedRecognitionAnswerRecord[];
+  analytics: SpeedRecognitionAnalytics;
+  startedAt: string;
+  completedAt: string;
+}): Promise<void> {
+  const attemptId = `${payload.userId}_${payload.setId}_${Date.now()}`;
+  await setDoc(doc(db, COLLECTIONS.SPEED_RECOGNITION_ATTEMPTS, attemptId), {
+    ...payload,
+    createdAt: Timestamp.now(),
+  });
 }
 
 // ==================== Images (PPDT/TAT) ====================
@@ -311,6 +497,12 @@ export async function getAvailableSets(testType: string): Promise<string[]> {
         break;
       case 'tat':
         collectionName = COLLECTIONS.TAT_IMAGES;
+        break;
+      case 'english':
+        collectionName = COLLECTIONS.ENGLISH_GRAMMAR_QUESTIONS;
+        break;
+      case 'listening':
+        collectionName = COLLECTIONS.LISTENING_QUESTIONS;
         break;
       default:
         return [];

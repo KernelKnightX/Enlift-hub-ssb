@@ -27,7 +27,11 @@ import {
   MessageCircle,
   ExternalLink,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  Mail,
+  Languages,
+  Headphones,
+  Radar
 } from 'lucide-react';
 import {
   collection,
@@ -240,6 +244,33 @@ Train the Mind. Clear the Board.`;
       actions: [{ label: 'Upload Situation Sets', path: '/admin/srt' }]
     },
     {
+      id: 'english',
+      name: 'English',
+      title: 'Grammar & Vocabulary Test',
+      description: 'Manage grammar, vocabulary, spelling, and sentence questions',
+      icon: Languages,
+      color: 'bg-cyan-600',
+      actions: [{ label: 'Upload English Questions', path: '/admin/english' }]
+    },
+    {
+      id: 'listening',
+      name: 'Listening',
+      title: 'Listening Recall Test',
+      description: 'Manage audio recall word questions',
+      icon: Headphones,
+      color: 'bg-emerald-600',
+      actions: [{ label: 'Upload Listening Questions', path: '/admin/listening' }]
+    },
+    {
+      id: 'speed-recognition',
+      name: 'Speed Recognition',
+      title: 'Speed Recognition Test',
+      description: 'Manage target/object recognition questions',
+      icon: Radar,
+      color: 'bg-amber-600',
+      actions: [{ label: 'Upload Speed Questions', path: '/admin/speed-recognition' }]
+    },
+    {
       id: 'mock',
       name: 'Mock Test',
       title: 'Mock Tests (AFCAT/NDA/CDS)',
@@ -256,6 +287,15 @@ Train the Mind. Clear the Board.`;
       icon: FileText,
       color: 'bg-green-600',
       actions: [{ label: 'Manage Blogs', path: '/admin/blog' }]
+    },
+    {
+      id: 'magazine',
+      name: 'Magazine',
+      title: 'Current Affairs Magazine',
+      description: 'Manage subscribers and send daily magazines',
+      icon: Mail,
+      color: 'bg-blue-600',
+      actions: [{ label: 'Manage Magazine', path: '/admin/magazine' }]
     }
   ];
 

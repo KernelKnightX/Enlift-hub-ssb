@@ -25,6 +25,10 @@ import AdminSRTSUploadPage from '@/pages/admin/AdminSRTSUploadPage';
 import AdminTATUploadPage from '@/pages/admin/AdminTATUploadPage';
 import AdminPPDTUploadPage from '@/pages/admin/AdminPPDTUploadPage';
 import AdminBlogPage from '@/pages/admin/AdminBlogPage';
+import AdminMagazinePage from '@/pages/admin/AdminMagazinePage';
+import AdminEnglishUploadPage from '@/pages/admin/AdminEnglishUploadPage';
+import AdminListeningUploadPage from '@/pages/admin/AdminListeningUploadPage';
+import AdminSpeedRecognitionUploadPage from '@/pages/admin/AdminSpeedRecognitionUploadPage';
 import DashboardPage from '@/pages/DashboardPage';
 import MembershipPage from '@/pages/MembershipPage';
 import MentorshipPage from '@/pages/MentorshipPage';
@@ -39,6 +43,17 @@ import SSBGTOPage from '@/pages/SSB/SSBGTOPage';
 import SSBLecturettePage from '@/pages/SSB/SSBLecturettePage';
 import SSBConferencePage from '@/pages/SSB/SSBConferencePage';
 import BlogPage from '@/pages/Blog/BlogPage';
+import SubscriptionPage from '@/pages/Subscription/SubscriptionPage';
+import SubscriptionSuccessPage from '@/pages/Subscription/SubscriptionSuccessPage';
+import EnglishInstructionPage from '@/pages/EnglishTest/InstructionPage';
+import EnglishSetSelectionPage from '@/pages/EnglishTest/SetSelectionPage';
+import EnglishGrammarVocabularyTestPage from '@/pages/EnglishTest/EnglishGrammarVocabularyTestPage';
+import ListeningInstructionPage from '@/pages/ListeningTest/InstructionPage';
+import ListeningSetSelectionPage from '@/pages/ListeningTest/SetSelectionPage';
+import ListeningTestPage from '@/pages/ListeningTest/ListeningTestPage';
+import SpeedRecognitionInstructionPage from '@/pages/SpeedRecognition/InstructionPage';
+import SpeedRecognitionSetSelectionPage from '@/pages/SpeedRecognition/SetSelectionPage';
+import SpeedRecognitionTestPage from '@/pages/SpeedRecognition/TestPage';
 
 import PPDTInstructionPage from '@/pages/PPDT/InstructionPage';
 import PPDTSetSelectionPage from '@/pages/PPDT/SetSelectionPage';
@@ -55,6 +70,10 @@ import WATTestPage from '@/pages/WAT/TestPage';
 import SRTInstructionPage from '@/pages/SRT/InstructionPage';
 import SRTSetSelectionPage from '@/pages/SRT/SetSelectionPage';
 import SRTTestPage from '@/pages/SRT/TestPage';
+
+import PaperFoldingInstructionPage from '@/pages/PaperFoldingInstructionPage';
+import PaperFoldingSetSelectionPage from '@/pages/PaperFoldingSetSelectionPage';
+import PaperFoldingTestPage from '@/pages/PaperFoldingTestPage';
 
 import CDSMockTestPage from '@/pages/MockTest/CDS/MockTestPage';
 import AFCATMockTestPage from '@/pages/MockTest/AFCAT/MockTestPage';
@@ -142,6 +161,9 @@ function App() {
 
           <Route path="/terms" element={<TermsPage />} />
 
+          <Route path="/subscription" element={<SubscriptionPage />} />
+          <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
+
           <Route path="/admin-login" element={<AdminLoginPage />} />
 
           {/* -------- USER DASHBOARD -------- */}
@@ -150,6 +172,96 @@ function App() {
             element={
               <ProtectedRoute>
                 <DashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* -------- ENGLISH -------- */}
+          <Route
+            path="/english/instructions"
+            element={
+              <ProtectedRoute>
+                <EnglishInstructionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/english/sets"
+            element={
+              <ProtectedRoute>
+                <EnglishSetSelectionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/english/test"
+            element={
+              <ProtectedRoute>
+                <EnglishGrammarVocabularyTestPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Legacy route redirect */}
+          <Route path="/english-test" element={<Navigate to="/english/instructions" replace />} />
+
+          {/* -------- LISTENING -------- */}
+          <Route
+            path="/listening/instructions"
+            element={
+              <ProtectedRoute>
+                <ListeningInstructionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/listening/sets"
+            element={
+              <ProtectedRoute>
+                <ListeningSetSelectionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/listening/test"
+            element={
+              <ProtectedRoute>
+                <ListeningTestPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Legacy route redirect */}
+          <Route path="/listening-test" element={<Navigate to="/listening/instructions" replace />} />
+
+          {/* -------- SPEED RECOGNITION -------- */}
+          <Route
+            path="/speed-recognition/instructions"
+            element={
+              <ProtectedRoute>
+                <SpeedRecognitionInstructionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/speed-recognition/sets"
+            element={
+              <ProtectedRoute>
+                <SpeedRecognitionSetSelectionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/speed-recognition/test"
+            element={
+              <ProtectedRoute>
+                <SpeedRecognitionTestPage />
               </ProtectedRoute>
             }
           />
@@ -279,6 +391,34 @@ function App() {
             }
           />
 
+          {/* -------- PAPER FOLDING -------- */}
+          <Route
+            path="/paper-folding/instructions"
+            element={
+              <ProtectedRoute>
+                <PaperFoldingInstructionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/paper-folding/sets"
+            element={
+              <ProtectedRoute>
+                <PaperFoldingSetSelectionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/paper-folding/test"
+            element={
+              <ProtectedRoute>
+                <PaperFoldingTestPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* -------- MOCK TESTS -------- */}
           <Route
             path="/mock-tests"
@@ -376,10 +516,14 @@ function App() {
             <Route path="/admin/dashboard" element={<Navigate to="/admin" replace />} />
             <Route path="/admin/wat" element={<AdminWATUploadPage />} />
             <Route path="/admin/blog" element={<AdminBlogPage />} />
+            <Route path="/admin/magazine" element={<AdminMagazinePage />} />
             <Route path="/admin/srt" element={<AdminSRTSUploadPage />} />
             <Route path="/admin/mock" element={<AdminMockTestsPage />} />
             <Route path="/admin/tat" element={<AdminTATUploadPage />} />
             <Route path="/admin/ppdt" element={<AdminPPDTUploadPage />} />
+            <Route path="/admin/english" element={<AdminEnglishUploadPage />} />
+            <Route path="/admin/listening" element={<AdminListeningUploadPage />} />
+            <Route path="/admin/speed-recognition" element={<AdminSpeedRecognitionUploadPage />} />
           </Route>
 
         </Routes>
