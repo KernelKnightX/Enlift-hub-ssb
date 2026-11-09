@@ -1,14 +1,26 @@
-# https://www.robotstxt.org/robotstxt.html
+# https://faujigrid.com — update Sitemap URL if VITE_SITE_URL differs in production
 User-agent: *
 Allow: /
+Allow: /about
+Allow: /mock-tests
+Allow: /mock-test/nda
+Allow: /mock-test/cds
+Allow: /mock-test/afcat
+Allow: /terms
+Allow: /privacy
 
-# Sitemap location
-Sitemap: https://enlifthub.com/sitemap.xml
+Disallow: /admin
+Disallow: /admin-login
+Disallow: /dashboard
+Disallow: /login
+Disallow: /register
+Disallow: /reset-password
+Disallow: /direct-reset-password
+Disallow: /mock-test/nda/test
+Disallow: /mock-test/cds/test
+Disallow: /mock-test/afcat/test
+Disallow: /mock-test/nda/analysis
+Disallow: /mock-test/cds/analysis
+Disallow: /mock-test/afcat/analysis
 
-# Disallow admin and private areas
-Disallow: /admin/
-Disallow: /api/
-Disallow: /*?*q=
-
-# Crawl-delay (optional, for polite crawling)
-Crawl-delay: 1
+Sitemap: https://faujigrid.com/sitemap.xml

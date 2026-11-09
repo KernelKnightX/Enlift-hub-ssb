@@ -1,7 +1,9 @@
-import { Link, useNavigate, useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
-import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
+import { Menu, X, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { BrandLogo } from '@/components/BrandLogo';
+import { BRAND_BYLINE, BRAND_NAME } from '@/lib/siteBranding';
 
 interface NavLink {
   label: string;
@@ -14,33 +16,10 @@ interface NavDropdown {
 
 type NavItem = NavLink | NavDropdown;
 
-const WHATSAPP_NUMBER = '918638075112'; // Your number without + or spaces
-
 const navItems: NavItem[] = [
   { label: 'Home', path: '/' },
-  {
-    label: 'Defence Guide',
-    dropdown: [
-      { label: 'About SSB', path: '/ssb-about' },
-      { label: 'SSB Process', path: '/ssb-process' },
-      { label: 'Officer Qualities', path: '/ssb-qualities' },
-      { label: 'Aspirant Lifestyle', path: '/ssb-lifestyle' },
-    ],
-  },
-  {
-    label: 'Preparation Guide',
-    dropdown: [
-      { label: 'Overview', path: '/ssb-preparation' },
-      { label: 'Lecturette', path: '/ssb-lecturette' },
-      { label: 'Personal Interview', path: '/ssb-interview' },
-      { label: 'Group Discussion', path: '/ssb-group-discussion' },
-      { label: 'GTO Tasks', path: '/ssb-gto' },
-      { label: 'Conference', path: '/ssb-conference' },
-    ],
-  },
-  { label: 'Mentorship', path: '/mentorship' },
-  { label: 'Magazine', path: '/subscription' },
-  { label: 'Blogs', path: '/blog' },
+  { label: 'About', path: '/about' },
+  { label: 'Mock tests', path: '/mock-tests' },
 ];
 
 const css = `
@@ -76,14 +55,14 @@ const css = `
     gap: 12px; 
     text-decoration: none; 
   }
-  .nav-logo img { height: 38px; width: auto; }
+  .nav-logo img { height: 42px; width: auto; max-width: min(200px, 52vw); object-fit: contain; }
   .nav-logo-wrap { display: flex; flex-direction: column; }
   .nav-logo-name { 
     font-family: 'Inter', system-ui, -apple-system, sans-serif; 
-    font-size: 1.5rem; 
-    font-weight: 700; 
+    font-size: 1.1rem;
+    font-weight: 800;
     color: #fff; 
-    letter-spacing: 0.02em; 
+    letter-spacing: 0.04em;
     line-height: 1; 
   }
   .nav-logo-tag { 
@@ -222,13 +201,12 @@ const css = `
 `;
 
 export function NavbarSection() {
+  const { isAuthenticated } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownTimeout, setDropdownTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
@@ -272,10 +250,10 @@ export function NavbarSection() {
     <nav className={`nav${scrolled ? ' scrolled' : ''}`}>
       <div className="nav-inner">
         <Link to="/" className="nav-logo">
-          <img src="/AbhyasSSB1.png" alt="Enlift hub" />
+          <BrandLogo variant="nav" loading="eager" fetchPriority="high" />
           <div className="nav-logo-wrap">
-            <span className="nav-logo-name">Enlift hub</span>
-            <span className="nav-logo-tag">The guide to defence</span>
+            <span className="nav-logo-name">{BRAND_NAME}</span>
+            <span className="nav-logo-tag">{BRAND_BYLINE}</span>
           </div>
         </Link>
 
@@ -340,22 +318,11 @@ export function NavbarSection() {
 
         <div className="nav-actions">
           {isAuthenticated ? (
-            <>
-              <Link to="/dashboard" className="nav-btn-ghost">Dashboard</Link>
-              <Link to="/membership" className="nav-btn-ghost">My Membership</Link>
-              <button className="nav-btn-ghost" onClick={() => { logout(); navigate('/'); }}>Logout</button>
-            </>
+            <Link to="/dashboard" className="nav-btn-primary">Dashboard</Link>
           ) : (
             <>
-              <Link to="/login" className="nav-btn-ghost">Login</Link>
-              <a 
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I'm interested in Enlift Hub SSB coaching programs")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="nav-btn-primary"
-              >
-                Apply Now
-              </a>
+              <Link to="/login" className="nav-btn-ghost">Log in</Link>
+              <Link to="/register" className="nav-btn-primary">Register</Link>
             </>
           )}
         </div>
@@ -393,23 +360,32 @@ export function NavbarSection() {
           })}
           <div className="nav-mobile-btns">
             {isAuthenticated ? (
-              <>
-                <Link to="/dashboard" className="nav-btn-ghost" style={{ flex: 1, textAlign: 'center' }} onClick={() => setMobileOpen(false)}>Dashboard</Link>
-                <button className="nav-btn-ghost" onClick={() => { logout(); navigate('/'); setMobileOpen(false); }}>Logout</button>
-              </>
+              <Link
+                to="/dashboard"
+                className="nav-btn-primary"
+                style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+                onClick={() => setMobileOpen(false)}
+              >
+                Dashboard
+              </Link>
             ) : (
               <>
-                <Link to="/login" className="nav-btn-ghost" style={{ flex: 1, textAlign: 'center' }} onClick={() => setMobileOpen(false)}>Login</Link>
-                <a 
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I'm interested in Enlift Hub SSB coaching programs")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <Link
+                  to="/login"
+                  className="nav-btn-ghost"
+                  style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/register"
                   className="nav-btn-primary"
                   style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
                   onClick={() => setMobileOpen(false)}
                 >
-                  Apply Now
-                </a>
+                  Register
+                </Link>
               </>
             )}
           </div>

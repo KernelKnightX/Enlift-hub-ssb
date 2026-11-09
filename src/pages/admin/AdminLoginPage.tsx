@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BrandLogo } from '@/components/BrandLogo';
+import { BRAND_NAME } from '@/lib/siteBranding';
 import {
   Mail,
   Lock,
@@ -84,8 +86,9 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <img src="/LOOGO.png" alt="Enlift hub" className="h-10 w-auto brightness-200" />
+          <Link to="/" className="mb-4 inline-flex flex-col items-center gap-2 text-white no-underline">
+            <BrandLogo variant="nav" className="h-10 w-auto max-w-[200px] object-contain brightness-110" loading="eager" />
+            <span className="text-lg font-extrabold tracking-wide">{BRAND_NAME}</span>
           </Link>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Crown className="w-6 h-6 text-amber-400" />

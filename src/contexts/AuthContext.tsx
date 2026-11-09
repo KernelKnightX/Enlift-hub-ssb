@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import {
-  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -8,20 +7,16 @@ import {
   setPersistence,
   browserLocalPersistence,
   sendPasswordResetEmail,
-  getAuth,
-  type User as FirebaseUser
+  signInWithPhoneNumber,
+  linkWithPhoneNumber,
+  type ApplicationVerifier,
+  type ConfirmationResult,
 } from 'firebase/auth';
 import {
  getDoc,
    doc,
   setDoc,
-  serverTimestamp,
   updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  limit
 } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User, LoginData, RegistrationData } from '@/types/schema';
@@ -29,9 +24,13 @@ import type { User, LoginData, RegistrationData } from '@/types/schema';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
+  isFirebaseAuthenticated: boolean;
+  isPhoneAuthenticated: boolean;
   isAdmin: boolean;
   login: (data: LoginData) => Promise<{ isAdmin: boolean }>;
   register: (data: RegistrationData) => Promise<void>;
+  sendPhoneOtp: (phoneNumber: string, appVerifier: ApplicationVerifier) => Promise<ConfirmationResult>;
+  completePhoneOtp: (confirmation: ConfirmationResult, code: string, candidateName: string) => Promise<void>;
   logout: () => Promise<void>;
   upgradeToPremium: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -47,6 +46,8 @@ const ADMIN_PASSWORD = 'admin123';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [isFirebaseAuthenticated, setIsFirebaseAuthenticated] = useState(false);
+  const [isPhoneAuthenticated, setIsPhoneAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Set local persistence and listen for auth state changes
@@ -65,58 +66,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPersistence(auth, browserLocalPersistence).catch(console.error);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Note: This app uses localStorage-based auth, not Firebase Auth
-      // Firebase onAuthStateChanged is only used for potential future Firebase login
-      // For now, we don't clear user on Firebase auth state change since we manage auth via localStorage
-      
-      // Only process Firebase user if we're actually using Firebase auth (not the case currently)
-      // This prevents the logout issue on refresh
-      if (firebaseUser && storedUser === null) {
-        // Only try to get Firestore user if there was no localStorage user
-        // This is a fallback for actual Firebase users in the future
-        // Get user profile from Firestore
+      if (firebaseUser) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-          if (userDoc.exists()) {
-            setUser({ id: firebaseUser.uid, ...userDoc.data() } as User);
-          } else {
-            // Create user profile if it doesn't exist
-            const newUser: User = {
-              id: firebaseUser.uid,
-              fullName: firebaseUser.displayName || 'User',
-              email: firebaseUser.email || '',
-              phoneNumber: firebaseUser.phoneNumber || '',
-              role: 'user',
-              isPremium: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            };
-            await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
-            setUser(newUser);
-          }
-        } catch (error) {
-          console.error('Error fetching user profile:', error);
-          // Fallback to Firebase Auth data
-          setUser({
-            id: firebaseUser.uid,
-            fullName: firebaseUser.displayName || 'User',
+          const profile = await loadOrCreateFirebaseProfile(firebaseUser.uid, {
+            fullName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Candidate',
             email: firebaseUser.email || '',
             phoneNumber: firebaseUser.phoneNumber || '',
-            role: 'user',
-            isPremium: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
           });
+          setUser(profile);
+          localStorage.setItem('enlift-user', JSON.stringify(profile));
+          setIsFirebaseAuthenticated(true);
+          setIsPhoneAuthenticated(!!firebaseUser.phoneNumber);
+        } catch (error) {
+          setIsFirebaseAuthenticated(false);
+          setIsPhoneAuthenticated(false);
+          console.error('Error fetching user profile:', error);
         }
       } else {
-        // Firebase user is null - but we use localStorage-based auth
-        // Don't clear user state here as it would log out the user on refresh
-        // The user session is managed via localStorage in the login function
-        // Only clear if there's no localStorage user (truly signed out)
-        const storedUser = localStorage.getItem('enlift-user');
-        if (!storedUser) {
-          setUser(null);
-        }
+        setIsFirebaseAuthenticated(false);
+        setIsPhoneAuthenticated(false);
+        if (!localStorage.getItem('enlift-user')) setUser(null);
       }
       setLoading(false);
     });
@@ -236,6 +205,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendPhoneOtp = async (phoneNumber: string, appVerifier: ApplicationVerifier) => {
+    const normalizedPhone = phoneNumber.replace(/[\s()-]/g, '');
+    if (!/^\+[1-9]\d{7,14}$/.test(normalizedPhone)) {
+      throw new Error('Enter a valid phone number with country code, for example +919876543210.');
+    }
+    try {
+      if (auth.currentUser) {
+        return await linkWithPhoneNumber(auth.currentUser, normalizedPhone, appVerifier);
+      }
+      return await signInWithPhoneNumber(auth, normalizedPhone, appVerifier);
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error
+        ? error.code
+        : undefined;
+      if (code === 'auth/invalid-app-credential' || code === 'auth/captcha-check-failed') {
+        throw new Error(
+          'Firebase could not verify this app. Check that localhost is an Authorized domain in the correct Firebase project and that its Web API key is not restricted from Firebase Authentication.',
+        );
+      }
+      if (code === 'auth/unauthorized-domain') {
+        throw new Error('This website domain is not authorized for Firebase Phone Authentication.');
+      }
+      if (code === 'auth/too-many-requests' || code === 'auth/quota-exceeded') {
+        throw new Error('Firebase has temporarily limited SMS verification. Please wait and try again, or use a Firebase test phone number.');
+      }
+      throw error;
+    }
+  };
+
+  const completePhoneOtp = async (confirmation: ConfirmationResult, code: string, candidateName: string) => {
+    const normalizedCode = code.trim();
+    if (!/^\d{6}$/.test(normalizedCode)) throw new Error('Enter the 6-digit code sent to your phone.');
+    const normalizedName = candidateName.trim();
+    if (!normalizedName) throw new Error('Enter your name to continue.');
+    const credential = await confirmation.confirm(normalizedCode);
+    await updateProfile(credential.user, { displayName: normalizedName });
+    const profile = await loadOrCreateFirebaseProfile(credential.user.uid, {
+      fullName: normalizedName,
+      email: credential.user.email || '',
+      phoneNumber: credential.user.phoneNumber || '',
+    });
+    if (profile.fullName !== normalizedName) {
+      profile.fullName = normalizedName;
+      profile.updatedAt = new Date().toISOString();
+      await setDoc(doc(db, 'users', credential.user.uid), profile, { merge: true });
+    }
+    setIsFirebaseAuthenticated(true);
+    setIsPhoneAuthenticated(!!credential.user.phoneNumber);
+    setUser(profile);
+    localStorage.setItem('enlift-user', JSON.stringify(profile));
+  };
+
   const logout = async () => {
     try {
       await signOut(auth);
@@ -314,9 +335,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{ 
         user, 
         isAuthenticated: !!user, 
+        isFirebaseAuthenticated,
+        isPhoneAuthenticated,
         isAdmin,
         login, 
         register, 
+        sendPhoneOtp,
+        completePhoneOtp,
         logout, 
         upgradeToPremium,
         resetPassword,
@@ -327,6 +352,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+async function loadOrCreateFirebaseProfile(
+  userId: string,
+  defaults: Pick<User, 'fullName' | 'email' | 'phoneNumber'>,
+): Promise<User> {
+  const profileRef = doc(db, 'users', userId);
+  const profileSnapshot = await getDoc(profileRef);
+  if (profileSnapshot.exists()) {
+    return { ...defaults, ...profileSnapshot.data(), id: userId } as User;
+  }
+  const profile: User = {
+    id: userId,
+    ...defaults,
+    role: 'user',
+    isPremium: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await setDoc(profileRef, profile);
+  return profile;
 }
 
 export function useAuth() {

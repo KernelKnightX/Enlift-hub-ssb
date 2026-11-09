@@ -99,7 +99,7 @@ export async function initializeMagazineSubscription(
       key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SCXH8jcCrljVzy',
       amount: plan.priceInPaise,
       currency: 'INR',
-      name: 'Enlift Hub',
+      name: 'Fauji Grid by Enlift Hub',
       description: `${plan.name} Current Affairs Subscription - ₹${plan.price}`,
       image: 'https://your-logo-url.com/logo.png',
       handler: async (response) => {

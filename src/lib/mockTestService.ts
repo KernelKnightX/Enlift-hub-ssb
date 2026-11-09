@@ -4,6 +4,7 @@ import {
   getDocs, 
   getDoc, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -12,17 +13,33 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { MockTest, MockTestAttempt, ExamType, Difficulty } from '@/types/schema';
+import type { MockTest, MockTestAttempt, MockTestProgress, ExamType, Difficulty } from '@/types/schema';
 
 // Collection names
 const MOCK_TESTS_COLLECTION = 'mockTests';
 const USER_MOCK_TEST_ATTEMPTS_COLLECTION = 'mockTestAttempts';
+const USER_MOCK_TEST_PROGRESS_COLLECTION = 'mockTestProgress';
+
+/** Firestore rejects `undefined`; strip it recursively from nested question objects. */
+function sanitizeForFirestore<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForFirestore(item)) as T;
+  }
+  if (value !== null && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      if (val === undefined) continue;
+      out[key] = sanitizeForFirestore(val);
+    }
+    return out as T;
+  }
+  return value;
+}
 
 // Get all mock tests
 export async function getMockTests(): Promise<MockTest[]> {
   const q = query(
     collection(db, MOCK_TESTS_COLLECTION),
-    where('isPublished', '==', true),
     orderBy('createdAt', 'desc')
   );
   const snapshot = await getDocs(q);
@@ -59,17 +76,22 @@ export async function getMockTestById(testId: string): Promise<MockTest | null> 
 
 // Create mock test (admin)
 export async function createMockTest(test: Omit<MockTest, 'id' | 'createdAt'>): Promise<string> {
-  const docRef = await addDoc(collection(db, MOCK_TESTS_COLLECTION), {
-    ...test,
-    createdAt: serverTimestamp()
-  });
+  const docRef = await addDoc(
+    collection(db, MOCK_TESTS_COLLECTION),
+    sanitizeForFirestore({
+      ...test,
+      description: test.description ?? '',
+      subject: test.subject?.trim() || 'General',
+      createdAt: serverTimestamp(),
+    }),
+  );
   return docRef.id;
 }
 
 // Update mock test (admin)
 export async function updateMockTest(testId: string, test: Partial<MockTest>): Promise<void> {
   const docRef = doc(db, MOCK_TESTS_COLLECTION, testId);
-  await updateDoc(docRef, test);
+  await updateDoc(docRef, sanitizeForFirestore(test));
 }
 
 // Delete mock test (admin)
@@ -118,6 +140,28 @@ export async function getUserTestAttempts(userId: string, testId: string): Promi
     id: doc.id,
     ...doc.data()
   })) as MockTestAttempt[];
+}
+
+export async function getMockTestProgress(
+  userId: string,
+  testId: string,
+): Promise<MockTestProgress | null> {
+  const progressRef = doc(db, `users/${userId}/${USER_MOCK_TEST_PROGRESS_COLLECTION}`, testId);
+  const snapshot = await getDoc(progressRef);
+  return snapshot.exists() ? snapshot.data() as MockTestProgress : null;
+}
+
+export async function saveMockTestProgress(
+  userId: string,
+  progress: MockTestProgress,
+): Promise<void> {
+  const progressRef = doc(db, `users/${userId}/${USER_MOCK_TEST_PROGRESS_COLLECTION}`, progress.testId);
+  await setDoc(progressRef, progress);
+}
+
+export async function deleteMockTestProgress(userId: string, testId: string): Promise<void> {
+  const progressRef = doc(db, `users/${userId}/${USER_MOCK_TEST_PROGRESS_COLLECTION}`, testId);
+  await deleteDoc(progressRef);
 }
 
 // Get user's best score for a test
