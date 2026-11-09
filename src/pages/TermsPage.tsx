@@ -1,127 +1,104 @@
-import { LegalDocumentLayout } from '@/components/legal/LegalDocumentLayout';
 import { Link } from 'react-router';
-
-const sections = [
-  {
-    id: 'acceptance',
-    title: 'Acceptance of terms',
-    content: (
-      <p>
-        By creating an account or using Fauji Grid, you agree to these Terms &amp; Conditions. If you do not agree, please
-        do not use the platform.
-      </p>
-    ),
-  },
-  {
-    id: 'service',
-    title: 'What we provide',
-    content: (
-      <p>
-        Fauji Grid offers <strong className="font-semibold text-slate-800">computer-based mock tests</strong> for defence
-        entrance examinations including NDA, CDS, and AFCAT. Features may include timed attempts, instruction sheets,
-        response review, and attempt history tied to your account. We may add, change, or remove papers during the pilot
-        without prior notice.
-      </p>
-    ),
-  },
-  {
-    id: 'accounts',
-    title: 'Your account',
-    content: (
-      <ul>
-        <li>Provide accurate registration details (name, date of birth, contact, email).</li>
-        <li>Keep your password confidential; you are responsible for activity under your account.</li>
-        <li>One person per account — do not share credentials or create duplicate accounts to bypass access limits.</li>
-        <li>Notify us promptly if you suspect unauthorised use.</li>
-      </ul>
-    ),
-  },
-  {
-    id: 'conduct',
-    title: 'Fair use',
-    content: (
-      <ul>
-        <li>Use mocks for personal exam preparation only.</li>
-        <li>Do not copy, scrape, redistribute, or resell questions, explanations, or interface content.</li>
-        <li>Do not interfere with timers, scoring, payments, or platform security.</li>
-        <li>Do not use automated tools to access the service without our written permission.</li>
-      </ul>
-    ),
-  },
-  {
-    id: 'payments',
-    title: 'Paid access',
-    content: (
-      <p>
-        Some papers or bundles may require payment through our payment partner (e.g. Razorpay). Prices and what is
-        included in a plan are shown at checkout. Unless required by law, fees for digital access are generally
-        non-refundable once access is granted. Chargebacks or fraud may result in account suspension.
-      </p>
-    ),
-  },
-  {
-    id: 'ip',
-    title: 'Intellectual property',
-    content: (
-      <p>
-        The Fauji Grid brand, software, and mock content are owned by us or our licensors. You receive a limited,
-        personal, non-transferable licence to use the platform for preparation. You may not reverse-engineer or create
-        derivative works from our materials.
-      </p>
-    ),
-  },
-  {
-    id: 'disclaimer',
-    title: 'Disclaimer',
-    content: (
-      <p>
-        Fauji Grid is an <strong className="font-semibold text-slate-800">independent practice tool</strong>. We are not
-        affiliated with UPSC, the Indian Air Force, or any armed forces recruitment body. Mock papers are for practice
-        only; we do not guarantee exam selection, ranks, or scores in real examinations.
-      </p>
-    ),
-  },
-  {
-    id: 'liability',
-    title: 'Limitation of liability',
-    content: (
-      <p>
-        To the fullest extent permitted by law, Fauji Grid is not liable for indirect, incidental, or consequential
-        damages, or for loss of data, profits, or opportunities arising from use of the service. The platform is provided
-        &quot;as is&quot; without warranty of uninterrupted or error-free operation.
-      </p>
-    ),
-  },
-  {
-    id: 'privacy',
-    title: 'Privacy',
-    content: (
-      <p>
-        Our collection and use of personal data is described in the{' '}
-        <Link to="/privacy">Privacy Policy</Link>. By using Fauji Grid, you acknowledge that policy.
-      </p>
-    ),
-  },
-  {
-    id: 'changes',
-    title: 'Changes to these terms',
-    content: (
-      <p>
-        We may update these terms from time to time. The &quot;Updated&quot; date at the top will change when we do.
-        Continued use after changes means you accept the revised terms.
-      </p>
-    ),
-  },
-];
+import { ArrowLeft } from 'lucide-react';
 
 export default function TermsPage() {
   return (
-    <LegalDocumentLayout
-      docType="terms"
-      title="Terms & Conditions"
-      updated="October 2026"
-      intro="Rules for using Fauji Grid mock tests and related services. Please read them before you register or attempt a paper."
-      sections={sections}
-    />
+    <div className="min-h-screen bg-background p-8">
+      <div className="max-w-3xl mx-auto">
+        {/* Back Link */}
+        <Link to="/register" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Registration
+        </Link>
+
+        {/* Header */}
+        <div className="text-center mb-8">
+          <img src="/AbhyasSSB.png" alt="Enlift hub" className="h-16 w-auto mx-auto mb-4" />
+          <h1 className="text-3xl font-bold">Terms & Conditions</h1>
+          <p className="text-muted-foreground mt-2">Last updated: February 2026</p>
+        </div>
+
+        {/* Content */}
+        <div className="prose prose-slate max-w-none space-y-6">
+          <section>
+            <h2 className="text-xl font-semibold mb-3">1. Acceptance of Terms</h2>
+            <p className="text-muted-foreground">
+              By accessing and using Enlift hub, you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to abide by these terms, please do not use this platform.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
+            <p className="text-muted-foreground">
+              Enlift hub is a practice platform designed to help SSB (Services Selection Board) aspirants prepare for psychology tests including PPDT, TAT, WAT, and SRT. The platform provides timed practice sessions and performance tracking.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">3. User Accounts</h2>
+            <p className="text-muted-foreground">
+              Users must provide accurate and complete information when creating an account. You are responsible for maintaining the confidentiality of your account credentials and for all activities that occur under your account.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">4. Usage Guidelines</h2>
+            <ul className="list-disc list-inside text-muted-foreground space-y-2">
+              <li>Use the platform only for legitimate SSB preparation purposes</li>
+              <li>Do not share or distribute practice content to others</li>
+              <li>Do not attempt to manipulate or circumvent the practice timing system</li>
+              <li>Do not create multiple accounts to gain unfair practice advantages</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">5. Intellectual Property</h2>
+            <p className="text-muted-foreground">
+              All content provided on Enlift hub, including practice questions, images, and materials, are the intellectual property of Enlift hub. Users may not reproduce, distribute, or use this content for commercial purposes without explicit permission.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">6. Disclaimer</h2>
+            <p className="text-muted-foreground">
+              Enlift hub is a practice tool only. We do not guarantee SSB recommendation or selection. The practice materials are designed to simulate SSB conditions but do not represent actual SSB examination content.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">7. Limitation of Liability</h2>
+            <p className="text-muted-foreground">
+              Enlift hub shall not be liable for any indirect, incidental, special, or consequential damages arising out of the use of this platform. We do not warrant that the service will be uninterrupted or error-free.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">8. Privacy Policy</h2>
+            <p className="text-muted-foreground">
+              Your use of Enlift hub is also governed by our Privacy Policy. By using this platform, you consent to the collection and use of your information as described in the Privacy Policy.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">9. Modifications to Terms</h2>
+            <p className="text-muted-foreground">
+              We reserve the right to modify these terms at any time. Continued use of the platform after any modifications constitutes acceptance of the new terms.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl font-semibold mb-3">10. Contact Information</h2>
+            <p className="text-muted-foreground">
+              If you have any questions about these Terms & Conditions, please contact us at support@enlifthub.com
+            </p>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-12 pt-8 border-t text-center text-muted-foreground">
+          <p>© 2026 Enlift hub. All rights reserved.</p>
+        </div>
+      </div>
+    </div>
   );
 }

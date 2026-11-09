@@ -4,7 +4,6 @@ import { ArrowLeft, CheckCircle, XCircle, Clock, Target, TrendingUp, BookOpen, S
 import { collection, query, getDocs, orderBy, limit, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatMockQuestionText } from "@/lib/mockTestText";
 
 interface QuestionData {
   id: number;
@@ -589,9 +588,7 @@ export default function TestAnalysisPage() {
                           </span>
                         </div>
                         <div className={`question-body ${isExpanded ? "open" : ""}`}>
-                          <div className="question-text" style={{ whiteSpace: 'pre-line' }}>
-                            {formatMockQuestionText(q.question)}
-                          </div>
+                          <div className="question-text">{q.question}</div>
                           <div className="option-list">
                             {q.options.map((opt, idx) => {
                               const isAnswer   = idx === q.correctAnswer;

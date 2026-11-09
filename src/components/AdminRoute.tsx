@@ -15,7 +15,7 @@ export default function AdminRoute() {
   // Check if user is authenticated and is admin
   // We check user first to avoid redirecting during auth state transitions
   if (!user) {
-    return <Navigate to="/admin-login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Check if user has admin role

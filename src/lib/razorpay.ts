@@ -1,6 +1,6 @@
 // Razorpay Payment Integration
-import { unlockPremiumPlan, type PremiumPlan } from './premiumAccess';
-import { unlockMockTest } from './mockTestAccess';
+import { db } from './firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 declare global {
   interface Window {
@@ -54,68 +54,106 @@ export function loadRazorpayScript(): Promise<void> {
   });
 }
 
-export async function createPremiumPlanOrder(
-  userName: string,
-  userEmail: string,
-  userPhone: string,
-  plan: PremiumPlan,
-  price: number,
-) {
+// Razorpay payment amount (in paise) - ₹1 for premium
+const PREMIUM_PRICE = 1 * 100; // ₹1
+
+// Create Razorpay order (in production, this should be done on server)
+export async function createRazorpayOrder(userName: string, userEmail: string, userPhone: string) {
+  // In production, call your backend to create order
+  // For demo, we'll use client-side only (not recommended for production)
+  
+  const options: RazorpayOptions = {
+    key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SCXH8jcCrljVzy',
+    amount: PREMIUM_PRICE,
+    currency: 'INR',
+    name: 'Enlift hub',
+    description: 'Premium Membership - Just ₹1',
+    image: 'https://your-logo-url.com/logo.png',
+    handler: (response) => {
+      // Payment successful - update premium status
+      handlePaymentSuccess(response);
+    },
+    prefill: {
+      name: userName,
+      email: userEmail,
+      contact: userPhone,
+    },
+    theme: {
+      color: '#f59e0b', // Amber color
+    },
+  };
+
   if (!window.Razorpay) {
     throw new Error('Razorpay not loaded');
   }
 
-  const razorpay = new window.Razorpay({
-    key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SCXH8jcCrljVzy',
-    amount: price * 100,
-    currency: 'INR',
-    name: 'Fauji Grid by Enlift Hub',
-    description: `${plan} premium access`,
-    handler: (response) => {
-      localStorage.setItem('razorpay_payment_id', response.razorpay_payment_id);
-      unlockPremiumPlan(plan);
-      window.location.reload();
-    },
-    prefill: { name: userName, email: userEmail, contact: userPhone },
-    theme: { color: '#0f172a' },
-  });
-
+  const razorpay = new window.Razorpay(options);
   razorpay.open();
 }
 
-export async function createMockTestOrder(
-  userName: string,
-  userEmail: string,
-  userPhone: string,
-  userId: string,
-  testId: string,
-  testTitle: string,
-  price: number,
-) {
-  if (!window.Razorpay) {
-    throw new Error('Razorpay not loaded');
+// Callback when payment is successful
+async function handlePaymentSuccess(response: RazorpayResponse) {
+  console.log('Payment successful:', response);
+  
+  // Store payment info
+  localStorage.setItem('razorpay_payment_id', response.razorpay_payment_id);
+  
+  // Upgrade user to premium (saves to both localStorage and Firebase)
+  await upgradeUserToPremium(response.razorpay_payment_id);
+}
+
+// Upgrade user to premium
+export async function upgradeUserToPremium(paymentId?: string) {
+  // Get current user from localStorage
+  const userStr = localStorage.getItem('enlift-user');
+  if (!userStr) {
+    console.error('No user found in localStorage');
+    return;
   }
 
-  const razorpay = new window.Razorpay({
-    key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SCXH8jcCrljVzy',
-    amount: price * 100,
-    currency: 'INR',
-    name: 'Fauji Grid by Enlift Hub',
-    description: `${testTitle} access`,
-    handler: (response) => {
-      localStorage.setItem('razorpay_payment_id', response.razorpay_payment_id);
-      unlockMockTest(testId, userId);
-      window.location.reload();
-    },
-    prefill: { name: userName, email: userEmail, contact: userPhone },
-    theme: { color: '#0f172a' },
-  });
+  const user = JSON.parse(userStr);
+  
+  // Update localStorage
+  user.isPremium = true;
+  if (paymentId) {
+    user.premiumPaymentId = paymentId;
+    user.premiumSince = new Date().toISOString();
+  }
+  localStorage.setItem('enlift-user', JSON.stringify(user));
+  
+  // Also update in users array
+  const users = JSON.parse(localStorage.getItem('enlift-users') || '[]');
+  const userIndex = users.findIndex((u: { id: string }) => u.id === user.id);
+  if (userIndex !== -1) {
+    users[userIndex].isPremium = true;
+    if (paymentId) {
+      users[userIndex].premiumPaymentId = paymentId;
+      users[userIndex].premiumSince = new Date().toISOString();
+    }
+    localStorage.setItem('enlift-users', JSON.stringify(users));
+  }
 
-  razorpay.open();
+  // Update to Firebase Firestore
+  try {
+    const userDocRef = doc(db, 'users', user.id);
+    await updateDoc(userDocRef, {
+      isPremium: true,
+      premiumPaymentId: paymentId || null,
+      premiumSince: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    console.log('Premium status saved to Firebase');
+  } catch (error) {
+    console.error('Failed to save premium status to Firebase:', error);
+  }
+  
+  // Reload page to reflect changes
+  window.location.reload();
 }
 
 // Verify payment (should be done on server in production)
 export async function verifyPayment(paymentId: string, orderId: string, signature: string) {
+  // In production, send to backend for verification
   console.log('Verifying payment:', { paymentId, orderId, signature });
   return true;
 }

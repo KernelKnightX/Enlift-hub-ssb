@@ -1,0 +1,15 @@
+export { NavbarSection } from '@/pages/navbar/NavbarSection';
+export { HeroSection } from './HeroSection';
+export { WhatThisIsSection } from './WhatThisIsSection';
+export { WhyPsychologyMattersSection } from './WhyPsychologyMattersSection';
+export { TestsSection } from './TestsSection';
+export { HowItWorksSection } from './HowItWorksSection';
+export { WhoShouldUseSection } from './WhoShouldUseSection';
+export { FAQSection } from './FAQSection';
+export { RealityCheckSection } from './RealityCheckSection';
+export { SocialShareSection } from './SocialShareSection';
+export { FinalCTASection } from './FinalCTASection';
+export { FooterSection } from './FooterSection';
+export { ComparisonSection } from './ComparisonSection';
+export { AboutUsSection } from './AboutUsSection';
+export { MentorsSection } from './MentorsSection';

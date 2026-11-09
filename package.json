@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "seed:speed-recognition": "node scripts/seed-speed-recognition-firebase.mjs"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
@@ -19,7 +20,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^10.8.0",
-    "jszip": "^3.10.2",
     "lucide-react": "^0.553.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

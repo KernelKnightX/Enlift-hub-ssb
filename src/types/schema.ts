@@ -100,12 +100,6 @@ export interface VIITQuestion {
   correctAnswer: number;
 }
 
-export interface OPAMQuestion {
-  id: number;
-  section: string;
-  prompt: string;
-}
-
 export interface EnglishGrammarQuestion {
   id: string;
   category: string;
@@ -213,14 +207,12 @@ export interface BlogCategory {
 }
 
 // Mock Test types
-export type ExamType = "prelims" | "mains" | "mains-descriptive" | "current-affairs" | "practice";
+export type ExamType = "prelims" | "mains" | "mains-descriptive" | "current-affairs";
 export type Difficulty = "easy" | "medium" | "hard";
 
 export interface MockTestQuestion {
   id: number;
   question: string;
-  passage?: string;
-  imageUrl?: string;
   options: string[]; // for MCQ
   correctAnswer: number; // 0-3 for MCQ
   explanation: string;
@@ -249,8 +241,6 @@ export interface MockTest {
   createdAt: string;
   createdBy: string;
   isPublished: boolean;
-  isFree?: boolean;
-  price?: number;
 }
 
 export interface MockTestAnswer {
@@ -274,7 +264,6 @@ export interface MockTestAttempt {
   correct: number;
   incorrect: number;
   total: number;
-  totalMarks?: number;
   totalAnswered: number;
   totalUnanswered: number;
   rawScore: number;
@@ -285,13 +274,4 @@ export interface MockTestAttempt {
   completedAt: string;
   passingScore: number;
   isPassed: boolean;
-}
-
-export interface MockTestProgress {
-  testId: string;
-  answers: Array<{ questionId: number; selectedIndex: number }>;
-  markedQuestionIds: number[];
-  currentQuestion: number;
-  remainingSeconds: number;
-  savedAtMs: number;
 }
