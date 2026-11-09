@@ -62,3 +62,51 @@ export function getCompletedSets(userId: string, testType: string): string[] {
   });
   return Array.from(completedSets);
 }
+
+export type SetAttemptSummary = {
+  completed: boolean;
+  quitPartial: boolean;
+  answeredItems: number;
+  totalItems: number;
+  label: string;
+};
+
+/** Latest session for a set — used on set selection (not step 3 nav). */
+export function getSetAttemptSummary(userId: string, testType: string, set: string): SetAttemptSummary | null {
+  const sessions = loadPracticeHistory(userId)
+    .filter((s) => s.testType === testType && s.set === set)
+    .sort((a, b) => new Date(b.endTime).getTime() - new Date(a.endTime).getTime());
+
+  if (sessions.length === 0) return null;
+
+  const latest = sessions[0];
+  if (latest.status === 'completed') {
+    return {
+      completed: true,
+      quitPartial: false,
+      answeredItems: latest.answeredItems,
+      totalItems: latest.totalItems,
+      label: 'Completed',
+    };
+  }
+
+  if (latest.status === 'quit') {
+    const n = latest.answeredItems;
+    const t = latest.totalItems;
+    return {
+      completed: false,
+      quitPartial: true,
+      answeredItems: n,
+      totalItems: t,
+      label: n > 0 ? `Partial (${n}/${t})` : 'Started · quit early',
+    };
+  }
+
+  return {
+    completed: false,
+    quitPartial: false,
+    answeredItems: latest.answeredItems,
+    totalItems: latest.totalItems,
+    label: 'In progress',
+  };
+}

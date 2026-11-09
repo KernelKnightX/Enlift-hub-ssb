@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { ArrowRight, Image, BookOpen, PenTool, MessageSquare, GraduationCap, Clock } from 'lucide-react';
+import { ArrowRight, Image, BookOpen, PenTool, MessageSquare, Clock, Target, GraduationCap } from 'lucide-react';
 
 const modules = [
   {
@@ -10,7 +10,7 @@ const modules = [
     icon: Image,
     color: 'bg-purple-100 text-purple-700',
     timing: '30s viewing + 4min writing',
-    path: '/ppdt/instructions'
+    path: '/ppdt/sets'
   },
   {
     id: 'tat',
@@ -20,7 +20,7 @@ const modules = [
     icon: BookOpen,
     color: 'bg-green-100 text-green-700',
     timing: '30s viewing + 4min per picture',
-    path: '/tat/instructions'
+    path: '/tat/sets'
   },
   {
     id: 'wat',
@@ -30,7 +30,7 @@ const modules = [
     icon: PenTool,
     color: 'bg-orange-100 text-orange-700',
     timing: '15 seconds per word',
-    path: '/wat/instructions'
+    path: '/wat/sets'
   },
   {
     id: 'srt',
@@ -40,16 +40,26 @@ const modules = [
     icon: MessageSquare,
     color: 'bg-red-100 text-red-700',
     timing: '30 seconds per situation',
-    path: '/srt/instructions'
+    path: '/srt/sets'
+  },
+  {
+    id: 'opam',
+    name: 'OPAM',
+    fullName: 'Officer Potential Assessment Measure',
+    description: '120 OLQ statements for the updated CSSS Stage-1 Selection System.',
+    icon: Target,
+    color: 'bg-purple-100 text-purple-700',
+    timing: '120 Likert statements',
+    path: '/opam/sets'
   },
   {
     id: 'prep',
     name: 'SSB Prep',
     fullName: 'SSB Interview Preparation',
-    description: 'Prepare for Lecturette, Interview, GD & GTO. Topic lists, question banks, and guidance.',
+    description: 'Lecturette, interview, GD, GTO & conference guides.',
     icon: GraduationCap,
     color: 'bg-blue-100 text-blue-700',
-    timing: 'Comprehensive guide',
+    timing: 'Reading & guidance',
     path: '/ssb-preparation'
   }
 ];

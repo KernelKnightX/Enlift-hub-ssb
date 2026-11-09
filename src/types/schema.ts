@@ -100,6 +100,12 @@ export interface VIITQuestion {
   correctAnswer: number;
 }
 
+export interface OPAMQuestion {
+  id: number;
+  section: string;
+  prompt: string;
+}
+
 export interface EnglishGrammarQuestion {
   id: string;
   category: string;
@@ -241,6 +247,8 @@ export interface MockTest {
   createdAt: string;
   createdBy: string;
   isPublished: boolean;
+  isFree?: boolean;
+  price?: number;
 }
 
 export interface MockTestAnswer {
@@ -264,6 +272,7 @@ export interface MockTestAttempt {
   correct: number;
   incorrect: number;
   total: number;
+  totalMarks?: number;
   totalAnswered: number;
   totalUnanswered: number;
   rawScore: number;
@@ -274,4 +283,13 @@ export interface MockTestAttempt {
   completedAt: string;
   passingScore: number;
   isPassed: boolean;
+}
+
+export interface MockTestProgress {
+  testId: string;
+  answers: Array<{ questionId: number; selectedIndex: number }>;
+  markedQuestionIds: number[];
+  currentQuestion: number;
+  remainingSeconds: number;
+  savedAtMs: number;
 }

@@ -39,7 +39,7 @@ export function FooterSection() {
               <div className="footer-brand-name">Enlift hub</div>
               <span className="footer-brand-tag">The guide to defence</span>
               <p className="footer-brand-desc">
-                Comprehensive defence preparation guidance. Residential, online and digital practice under ex-defence officer mentorship.
+                A focused SSB practice platform for learning the process, reviewing preparation guidance, and building a consistent practice routine.
               </p>
               <div className="footer-contact">
                 <div className="footer-contact-item">
@@ -55,13 +55,12 @@ export function FooterSection() {
             </div>
 
             <div>
-              <div className="footer-col-title">Institute</div>
+              <div className="footer-col-title">Platform</div>
               {[
                 { label: 'Home', path: '/' },
-                { label: 'About SSB', path: '/ssb-about' },
-                { label: 'SSB Process', path: '/ssb-process' },
-                { label: 'Officer Like Qualities', path: '/ssb-qualities' },
-                { label: 'SSB Info & Dates', path: '/blog' },
+                { label: 'Dashboard', path: '/dashboard' },
+                { label: 'SSB Preparation', path: '/ssb-preparation' },
+                { label: 'Mock Tests', path: '/mock-tests' },
               ].map(l => (
                 <Link key={l.label} to={l.path} className="footer-link">{l.label}</Link>
               ))}
@@ -70,24 +69,21 @@ export function FooterSection() {
             <div>
               <div className="footer-col-title">Psychology Practice</div>
               {[
-                { label: 'PPDT Practice', path: '/ppdt/instructions' },
-                { label: 'TAT Practice', path: '/tat/instructions' },
-                { label: 'WAT Practice', path: '/wat/instructions' },
-                { label: 'SRT Practice', path: '/srt/instructions' },
-                { label: 'Dashboard', path: '/dashboard' },
+                { label: 'PPDT', path: '/ppdt/sets' },
+                { label: 'TAT', path: '/tat/sets' },
+                { label: 'WAT', path: '/wat/sets' },
+                { label: 'SRT', path: '/srt/sets' },
+                { label: 'OPAM', path: '/opam/sets' },
               ].map(l => (
                 <Link key={l.label} to={l.path} className="footer-link">{l.label}</Link>
               ))}
             </div>
 
             <div>
-              <div className="footer-col-title">Enrol</div>
+              <div className="footer-col-title">Account</div>
               {[
-                { label: 'Register Free', path: '/register' },
+                { label: 'Register', path: '/register' },
                 { label: 'Login', path: '/login' },
-                { label: 'Mentorship', path: '/mentorship' },
-                { label: 'Magazine', path: '/subscription' },
-                { label: 'SSB Preparation Guide', path: '/ssb-preparation' },
                 { label: 'Terms & Conditions', path: '/terms' },
               ].map(l => (
                 <Link key={l.label} to={l.path} className="footer-link">{l.label}</Link>
@@ -97,7 +93,7 @@ export function FooterSection() {
 
           <div className="footer-bottom">
             <p className="footer-copy">© {new Date().getFullYear()} Enlift hub. All rights reserved.</p>
-            <p className="footer-disc">Independent coaching institute. Not affiliated with Indian Armed Forces or any SSB board.</p>
+            <p className="footer-disc">Independent practice platform. Not affiliated with Indian Armed Forces or any SSB board.</p>
           </div>
         </div>
       </footer>

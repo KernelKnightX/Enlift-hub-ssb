@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useOIRQuestions } from '@/hooks/useTestData';
 import { useAuth } from '@/contexts/AuthContext';
+import { PsychCandidateVerificationGate } from '@/components/practice/PsychCandidateVerificationGate';
 import { savePracticeSession } from '@/utils/practiceHistory';
 import {
   Clock,
@@ -49,16 +50,12 @@ export default function OIRTestPage() {
     return () => clearInterval(t);
   }, [testStarted, countdown]);
 
-  const startTest = () => {
-    setTestStarted(true);
-  };
-
   /* ================= TIMER ================= */
   useEffect(() => {
-    if (completed || timeLeft <= 0 || testStarted) return;
+    if (completed || timeLeft <= 0 || !testStarted || countdown > 0) return;
     const t = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(t);
-  }, [timeLeft, completed]);
+  }, [testStarted, countdown, timeLeft, completed]);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -101,17 +98,22 @@ export default function OIRTestPage() {
   // Start button (before countdown)
   if (!testStarted) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <Card className="max-w-md w-full text-center p-8">
-          <h2 className="text-xl font-semibold mb-4">OIR Test Ready</h2>
-          <p className="text-sm text-slate-600 mb-6">
-            You are about to start the OIR test with {count} questions.
-          </p>
-          <Button size="lg" onClick={() => setTestStarted(true)} className="w-full">
-            Start Test
-          </Button>
-        </Card>
-      </div>
+      <PsychCandidateVerificationGate
+        label="OIR"
+        color="#15803d"
+      >
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full text-center p-8">
+            <h2 className="text-xl font-semibold mb-4">OIR Test Ready</h2>
+            <p className="text-sm text-slate-600 mb-6">
+              You are about to start the OIR test with {count} questions.
+            </p>
+            <Button size="lg" onClick={() => setTestStarted(true)} className="w-full">
+              Start Test
+            </Button>
+          </Card>
+        </div>
+      </PsychCandidateVerificationGate>
     );
   }
 

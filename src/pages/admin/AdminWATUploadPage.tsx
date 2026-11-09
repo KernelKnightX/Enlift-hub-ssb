@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import {
   ArrowLeft,
   Upload,
-  FileJson,
+  FileArchive,
   Trash2,
   Plus,
   Save,
@@ -17,16 +17,37 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
-import { saveWATSet } from '@/lib/testDataService';
+import { deleteWATSet, getWATSetSummaries, saveWATSet } from '@/lib/testDataService';
+import { readJsonFilesFromZip } from '@/lib/adminUploadArchives';
+import { AdminSavedSets } from '@/components/admin/AdminSavedSets';
 import type { WATWord } from '@/types/schema';
 
 export default function WATUploadPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [words, setWords] = useState<WATWord[]>([]);
+  const [zipSets, setZipSets] = useState<Array<{ setId: string; words: WATWord[] }> | null>(null);
   const [setId, setSetId] = useState('set1');
   const [uploading, setUploading] = useState(false);
+  const [savedSets, setSavedSets] = useState<Array<{ setId: string; items: string[] }>>([]);
+  const [loadingSets, setLoadingSets] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const refreshSets = useCallback(async () => {
+    setLoadingSets(true);
+    try {
+      setSavedSets(await getWATSetSummaries());
+    } catch (error) {
+      console.error('Failed to load saved WAT sets:', error);
+      setMessage({ type: 'error', text: 'Could not load saved WAT sets. Please refresh and try again.' });
+    } finally {
+      setLoadingSets(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshSets();
+  }, [refreshSets]);
 
   // Predefined set options
   const setOptions = [
@@ -42,30 +63,83 @@ export default function WATUploadPage() {
     { value: 'set10', label: 'Set 10' }
   ];
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(e.target?.result as string);
-        const json = Array.isArray(parsed) ? parsed : [];
-        const parsedWords: WATWord[] = json.map((word: unknown, index: number) => {
-          const wordObj = word as { word?: string };
-          return {
-            id: `${index + 1}`,
-            word: typeof word === 'string' ? word : (wordObj.word || '')
-          };
-        });
-        
-        setWords(parsedWords);
-        setMessage({ type: 'success', text: `Loaded ${parsedWords.length} words from JSON` });
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Invalid JSON format. Please check the file.' });
+    try {
+      const jsonFiles = file.name.toLowerCase().endsWith('.zip')
+        ? await readJsonFilesFromZip(file)
+        : [{ name: file.name, content: await file.text() }];
+      if (jsonFiles.length === 0) {
+        throw new Error('The ZIP archive does not contain any JSON files.');
       }
-    };
-    reader.readAsText(file);
+
+      const parseWords = (value: unknown, name: string): WATWord[] => {
+        const rawWords = Array.isArray(value)
+          ? value
+          : typeof value === 'object' && value !== null && 'words' in value
+            ? value.words
+            : null;
+        if (!Array.isArray(rawWords)) {
+          throw new Error(`${name} must contain a JSON array or an object with a "words" array.`);
+        }
+        if (rawWords.length === 0) throw new Error(`${name} does not contain any words.`);
+        return rawWords.map((word: unknown, index: number) => {
+          const wordObj = typeof word === 'object' && word !== null
+            ? word as { word?: unknown }
+            : null;
+          const value = typeof word === 'string' ? word : wordObj?.word;
+          if (typeof value !== 'string' || !value.trim()) {
+            throw new Error(`${name}: word ${index + 1} is empty or invalid.`);
+          }
+          return { id: `${index + 1}`, word: value.trim() };
+        });
+      };
+
+      if (file.name.toLowerCase().endsWith('.zip')) {
+        const importedSets = jsonFiles.map(({ name, content }) => {
+          const data: unknown = JSON.parse(content);
+          const metadata = typeof data === 'object' && data !== null
+            ? data as { set_number?: unknown }
+            : null;
+          const filenameSetNumber = name.match(/set[_-]?0*(\d+)/i)?.[1];
+          const setNumber = typeof metadata?.set_number === 'number'
+            ? metadata.set_number
+            : filenameSetNumber
+              ? Number(filenameSetNumber)
+              : null;
+          if (setNumber === null || !Number.isInteger(setNumber) || setNumber < 1) {
+            throw new Error(`${name} needs a positive "set_number" or a set number in its filename.`);
+          }
+          return { setId: `set${setNumber}`, words: parseWords(data, name) };
+        });
+        if (new Set(importedSets.map((set) => set.setId)).size !== importedSets.length) {
+          throw new Error('The ZIP contains more than one file for the same WAT set number.');
+        }
+        setZipSets(importedSets);
+        setWords([]);
+        setMessage({
+          type: 'success',
+          text: `Loaded ${importedSets.length} WAT sets with ${importedSets.reduce((total, set) => total + set.words.length, 0)} words. Review the sets below, then save.`,
+        });
+      } else {
+        const parsedWords = parseWords(JSON.parse(jsonFiles[0].content) as unknown, jsonFiles[0].name);
+        setWords(parsedWords);
+        setZipSets(null);
+        setMessage({
+          type: 'success',
+          text: `Loaded ${parsedWords.length} words from JSON. Save them to ${setId}.`,
+        });
+      }
+    } catch (error) {
+      setZipSets(null);
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Unable to read the selected file.',
+      });
+    }
   };
 
   const addWord = () => {
@@ -85,7 +159,8 @@ export default function WATUploadPage() {
   };
 
   const handleSave = async () => {
-    if (words.length === 0) {
+    const setsToSave = zipSets ?? (words.length > 0 ? [{ setId, words }] : []);
+    if (setsToSave.length === 0) {
       setMessage({ type: 'error', text: 'Please add at least one word' });
       return;
     }
@@ -94,14 +169,45 @@ export default function WATUploadPage() {
     setMessage(null);
 
     try {
-      await saveWATSet(setId, words);
-      setMessage({ type: 'success', text: `Successfully saved ${words.length} words to ${setId}` });
+      for (const set of setsToSave) await saveWATSet(set.setId, set.words);
+      setMessage({
+        type: 'success',
+        text: zipSets
+          ? `Successfully saved ${zipSets.length} sets with ${zipSets.reduce((total, set) => total + set.words.length, 0)} words.`
+          : `Successfully saved ${words.length} words to ${setId}`,
+      });
       setWords([]);
+      setZipSets(null);
+      await refreshSets();
       // Keep setId so user can add more words to the same set
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+      console.error('Failed to save WAT set:', error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Failed to save WAT set: ${error.message}` : 'Failed to save WAT set.' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteSet = async (id: string) => {
+    try {
+      await deleteWATSet(id);
+      setSavedSets((sets) => sets.filter((set) => set.setId !== id));
+      setMessage({ type: 'success', text: `Deleted WAT set "${id}".` });
+    } catch (error) {
+      console.error(`Failed to delete WAT set ${id}:`, error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Failed to delete "${id}": ${error.message}` : `Failed to delete "${id}".` });
+    }
+  };
+
+  const handleDeleteAllSets = async () => {
+    try {
+      for (const set of savedSets) await deleteWATSet(set.setId);
+      setSavedSets([]);
+      setMessage({ type: 'success', text: `Deleted all ${savedSets.length} WAT sets.` });
+    } catch (error) {
+      console.error('Failed to delete all WAT sets:', error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Could not delete all WAT sets: ${error.message}` : 'Could not delete all WAT sets.' });
+      await refreshSets();
     }
   };
 
@@ -168,8 +274,8 @@ export default function WATUploadPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileJson className="w-5 h-5" />
-              Upload JSON File
+              <FileArchive className="w-5 h-5" />
+              Upload JSON or ZIP File
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -177,16 +283,16 @@ export default function WATUploadPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json"
-                onChange={handleFileUpload}
+                accept=".json,.zip,application/json,application/zip"
+                onChange={(event) => void handleFileUpload(event)}
                 className="hidden"
               />
               <Upload className="w-10 h-10 mx-auto text-gray-400 mb-4" />
               <p className="text-sm text-gray-600 mb-2">
-                Drag & drop a JSON file or click to browse
+                Choose a JSON file or a ZIP containing one JSON file per set
               </p>
               <p className="text-xs text-gray-500 mb-4">
-                Expected format: Array of words: ["Success", "Challenge", "Leadership"]
+                JSON may be an array or an object with a words array. ZIP files use each file's set_number.
               </p>
               <div className="flex justify-center gap-3">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
@@ -199,6 +305,26 @@ export default function WATUploadPage() {
             </div>
           </CardContent>
         </Card>
+
+        {zipSets && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>WAT sets ready to save ({zipSets.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {zipSets.map((set) => (
+                <div key={set.setId} className="rounded-lg border bg-slate-50 p-4">
+                  <p className="font-semibold text-slate-900">{set.setId}</p>
+                  <p className="text-sm text-muted-foreground">{set.words.length} words</p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    {set.words.slice(0, 5).map((word) => word.word).join(', ')}
+                    {set.words.length > 5 ? '…' : ''}
+                  </p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         <Separator className="my-6" />
 
@@ -273,15 +399,28 @@ export default function WATUploadPage() {
           </CardContent>
         </Card>
 
+        <AdminSavedSets
+          title="Previously uploaded WAT sets"
+          description="Expand a set to preview its words. Deleting removes the full set from the test library."
+          itemLabel="words"
+          sets={savedSets.map((set) => ({
+            setId: set.setId,
+            previews: set.items.map((word) => ({ label: word })),
+          }))}
+          loading={loadingSets}
+          onDelete={handleDeleteSet}
+          onDeleteAll={handleDeleteAllSets}
+        />
+
         {/* Save Button */}
         <div className="mt-6 flex justify-end">
           <Button
             size="lg"
             onClick={handleSave}
-            disabled={uploading || words.length === 0 || !setId}
+            disabled={uploading || (words.length === 0 && !zipSets) || (!zipSets && !setId)}
           >
             <Save className="w-4 h-4 mr-2" />
-            {uploading ? 'Saving...' : 'Save to Firebase'}
+            {uploading ? 'Saving...' : zipSets ? `Save ${zipSets.length} sets to Firebase` : 'Save to Firebase'}
           </Button>
         </div>
       </div>

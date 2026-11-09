@@ -1,52 +1,40 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { useWATWords } from '@/hooks/useTestData';
 import { useAuth } from '@/contexts/AuthContext';
-import { savePracticeSession } from '@/utils/practiceHistory';
-import { Clock, FileText, CheckCircle, Loader2, XCircle } from 'lucide-react';
-
-type TestPhase = 'countdown' | 'word' | 'completed';
+import { exitLiveActivity } from '@/lib/appNavigation';
+import { savePsychTestCompleted, savePsychTestQuit } from '@/lib/psychTestSession';
+import { useBfCacheLiveTestRecovery } from '@/hooks/useBfCacheLiveTestRecovery';
+import { PsychTestRunShell } from '@/components/practice/PsychTestRunShell';
+import { PsychStartCountdown } from '@/components/practice/PsychStartCountdown';
+import { PsychCandidateVerificationGate } from '@/components/practice/PsychCandidateVerificationGate';
+import { getPsychModule } from '@/data/psychTestModules';
+import { FileText, CheckCircle } from 'lucide-react';
 
 export default function WATTestPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const set = searchParams.get('set') || 'set1';
-
-  // WAT typically has 60 words per set
   const TOTAL_WORDS = 60;
 
-  // Words fetched from backend (admin-controlled)
   const { user } = useAuth();
   const { data: words, loading } = useWATWords(set, TOTAL_WORDS);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(15);
   const [completed, setCompleted] = useState(false);
-  const [phase, setPhase] = useState<TestPhase>('countdown');
-  const [countdown, setCountdown] = useState(3);
+  const [started, setStarted] = useState(false);
   const startTimeRef = useRef<Date>(new Date());
+  const savedCompleteRef = useRef(false);
+  const module = getPsychModule('wat');
+  useBfCacheLiveTestRecovery(module.routes.sets);
 
   const WORD_TIME = 15;
 
-  /* ---------------- COUNTDOWN TIMER ---------------- */
   useEffect(() => {
-    if (phase !== 'countdown') return;
-    
-    if (countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setPhase('word');
-    }
-  }, [phase, countdown]);
-  /* ---------------- TIMER ---------------- */
-  useEffect(() => {
-    if (completed || phase !== 'word') return;
+    if (completed || !started) return;
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -59,9 +47,8 @@ export default function WATTestPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [currentIndex, completed, phase]);
+  }, [currentIndex, completed, started]);
 
-  /* ---------------- NEXT WORD ---------------- */
   const handleNextWord = () => {
     if (currentIndex < TOTAL_WORDS - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -72,218 +59,80 @@ export default function WATTestPage() {
     }
   };
 
-  /* ---------------- SAVE COMPLETED SESSION ---------------- */
   const saveCompletedSession = () => {
-    if (user) {
-      const endTime = new Date();
-      const totalTimeMinutes = (endTime.getTime() - startTimeRef.current.getTime()) / (1000 * 60);
-      savePracticeSession({
-        id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        userId: user.id,
-        testType: 'wat',
-        set: set,
-        startTime: startTimeRef.current.toISOString(),
-        endTime: endTime.toISOString(),
-        status: 'completed',
-        score: 100,
-        totalItems: TOTAL_WORDS,
-        answeredItems: TOTAL_WORDS,
-        totalTimeMinutes,
-        responses: []
-      });
-    }
+    if (!user || savedCompleteRef.current) return;
+    savedCompleteRef.current = true;
+    savePsychTestCompleted(user.id, 'wat', set, TOTAL_WORDS, startTimeRef.current);
   };
 
-  /* ---------------- QUIT TEST ---------------- */
   const handleQuit = () => {
-    if (confirm('Are you sure you want to quit this test? Your progress will be saved.')) {
-      if (user && currentIndex > 0) {
-        const endTime = new Date();
-        const totalTimeMinutes = (endTime.getTime() - startTimeRef.current.getTime()) / (1000 * 60);
-        savePracticeSession({
-          id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          userId: user.id,
-          testType: 'wat',
-          set: set,
-          startTime: startTimeRef.current.toISOString(),
-          endTime: endTime.toISOString(),
-          status: 'quit',
-          score: 0,
-          totalItems: TOTAL_WORDS,
-          answeredItems: currentIndex,
-          totalTimeMinutes,
-          responses: []
-        });
-      }
-      navigate('/dashboard');
+    if (!confirm('Quit this set? Progress is saved; the set stays marked partial until you finish all words.')) return;
+    if (user && started) {
+      savePsychTestQuit(user.id, 'wat', set, TOTAL_WORDS, currentIndex + 1, startTimeRef.current);
     }
+    exitLiveActivity(navigate, module.routes.sets);
   };
 
-  /* ---------------- COMPLETED ---------------- */
-
-  // Loading state
-  if (loading) {
+  if (!started && !completed) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto" />
-          <p className="text-slate-600">Loading test data...</p>
-        </div>
-      </div>
+      <PsychCandidateVerificationGate label="WAT" color={module.primary}>
+        <PsychStartCountdown
+          module={module}
+          setLabel={set.replace('set', 'Set ')}
+          loading={loading}
+          onReady={() => setStarted(true)}
+          subtitle="One sentence per word on paper."
+        />
+      </PsychCandidateVerificationGate>
     );
   }
 
   if (completed) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        <Card className="max-w-xl w-full text-center p-8 border">
-          <div className="flex justify-center mb-4">
-            <CheckCircle className="w-14 h-14 text-emerald-600" />
+      <div className="flex h-[100dvh] items-center justify-center bg-[#eef2f7] px-4">
+        <Card className="w-full max-w-md border p-6 text-center">
+          <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-600" />
+          <h2 className="text-lg font-bold">WAT set completed</h2>
+          <p className="mt-2 text-sm text-slate-600">All {TOTAL_WORDS} words in {set} are done.</p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button onClick={() => exitLiveActivity(navigate, module.routes.sets)} style={{ background: module.primary }} className="text-white">
+              Back to sets
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>Dashboard</Button>
           </div>
-          <h2 className="text-xl font-semibold mb-2">
-            WAT Set Completed
-          </h2>
-          <p className="text-sm text-slate-600 mb-6">
-            You have successfully completed all {TOTAL_WORDS} words in this set.
-          </p>
-
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-8 py-3 bg-emerald-600 text-white rounded-md font-medium hover:bg-emerald-700"
-          >
-            Back to Dashboard
-          </button>
         </Card>
       </div>
     );
   }
 
-  /* ---------------- UI HELPERS ---------------- */
   const progress = ((currentIndex + 1) / TOTAL_WORDS) * 100;
-  
-  // Timer color based on time remaining
+
   const getTimerColor = () => {
     if (timeRemaining <= 5) return 'text-red-600';
     if (timeRemaining <= 10) return 'text-amber-600';
-    return 'text-emerald-600';
+    return 'text-slate-900';
   };
-  
-  const getTimerBgColor = () => {
-    if (timeRemaining <= 5) return 'bg-red-50 border-red-200';
-    if (timeRemaining <= 10) return 'bg-amber-50 border-amber-200';
-    return 'bg-emerald-50 border-emerald-200';
-  };
-
-  /* ---------------- MAIN RENDER ---------------- */
-  // Countdown screen
-  if (phase === 'countdown') {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-9xl font-bold text-white mb-4 animate-pulse">
-            {countdown}
-          </div>
-          <p className="text-xl text-slate-300">
-            Get ready! Test will start soon...
-          </p>
-          <p className="text-sm text-slate-400 mt-4">
-            Write your responses on paper
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-white px-6 py-6">
-
-      <div className="max-w-6xl mx-auto">
-
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">
-              Word Association Test (WAT)
-            </h1>
-            <p className="text-sm text-slate-600">
-              Word {currentIndex + 1} of {TOTAL_WORDS}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-slate-600 mr-2">
-              Set: {set}
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleQuit}
-              className="text-red-600 border-red-200 hover:bg-red-50"
-            >
-              <XCircle className="w-4 h-4 mr-1" />
-              Quit Test
-            </Button>
-          </div>
-        </div>
-
-        {/* Progress */}
-        <Progress value={progress} className="h-2 mb-6" />
-
-        {/* Main Card */}
-        <Card className="border p-8 text-center">
-
-          {/* Timer */}
-          <div className={`flex justify-center mb-6 transition-colors duration-300`}>
-            <div className={`flex items-center gap-3 px-8 py-4 border-2 rounded-2xl ${getTimerBgColor()} transition-colors duration-300`}>
-              <Clock className={`w-8 h-8 ${getTimerColor()} transition-colors duration-300`} />
-              <div>
-                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide">
-                  Time Remaining
-                </p>
-                <p className={`text-5xl font-bold ${getTimerColor()} transition-colors duration-300 tabular-nums`}>
-                  {timeRemaining}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Word Display */}
-          <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-6">
-              <FileText className="w-5 h-5 text-slate-500" />
-              <span className="text-sm font-medium text-slate-600 uppercase tracking-wider">
-                Word {currentIndex + 1} of {TOTAL_WORDS}
-              </span>
-            </div>
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-12 mb-6 border-2 border-slate-200 shadow-sm">
-              <h2 className="text-6xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight">
-                {words[currentIndex]?.word || '...'}
-              </h2>
-            </div>
-            <p className="text-lg text-slate-600 font-medium">
-              Write a complete sentence using this word
-            </p>
-          </div>
-
-
-          {/* Instructions */}
-          <div className="flex flex-wrap justify-center gap-3 text-xs">
-            <span className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600">
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Use word meaningfully
-            </span>
-            <span className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600">
-              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-              Show positive thinking
-            </span>
-            <span className="flex items-center gap-1 px-3 py-1.5 bg-slate-100 rounded-full text-slate-600">
-              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-              Timer auto-advances
-            </span>
-          </div>
-
-        </Card>
-
+    <PsychTestRunShell
+      moduleId="wat"
+      set={set}
+      progress={progress}
+      itemLine={`Word ${currentIndex + 1} of ${TOTAL_WORDS}`}
+      timerLabel="Time remaining"
+      timerDisplay={`${timeRemaining}s`}
+      onQuit={handleQuit}
+      footerNote="Write one sentence on paper · timer auto-advances"
+    >
+      <div className="flex max-h-full w-full max-w-lg flex-col items-center justify-center gap-3 px-2">
+        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+          <FileText className="h-3.5 w-3.5" /> Word {currentIndex + 1}
+        </span>
+        <p className={`text-4xl font-black tabular-nums sm:text-5xl ${getTimerColor()}`}>
+          {words[currentIndex]?.word || '…'}
+        </p>
+        <p className="text-center text-sm text-slate-600">Write a complete sentence using this word</p>
       </div>
-    </div>
+    </PsychTestRunShell>
   );
 }

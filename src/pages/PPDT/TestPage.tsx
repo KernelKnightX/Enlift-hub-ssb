@@ -1,14 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Card } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { usePPDTImages } from '@/hooks/useTestData';
 import { useAuth } from '@/contexts/AuthContext';
-import { savePracticeSession } from '@/utils/practiceHistory';
-import { Clock, Eye, PenTool, Coffee, CheckCircle, Loader2, XCircle } from 'lucide-react';
+import { savePsychTestCompleted, savePsychTestQuit } from '@/lib/psychTestSession';
+import { exitLiveActivity } from '@/lib/appNavigation';
+import { useBfCacheLiveTestRecovery } from '@/hooks/useBfCacheLiveTestRecovery';
+import { PsychTestRunShell } from '@/components/practice/PsychTestRunShell';
+import { PsychStartCountdown } from '@/components/practice/PsychStartCountdown';
+import { PsychCandidateVerificationGate } from '@/components/practice/PsychCandidateVerificationGate';
+import { getPsychModule } from '@/data/psychTestModules';
+import { Clock, Eye, PenTool, Coffee, CheckCircle, Loader2 } from 'lucide-react';
 
-type TestPhase = 'countdown' | 'viewing' | 'writing' | 'break' | 'completed';
+type TestPhase = 'viewing' | 'writing' | 'break' | 'completed';
 
 export default function PPDTTestPage() {
   const navigate = useNavigate();
@@ -22,125 +27,97 @@ export default function PPDTTestPage() {
   const { data: images, loading } = usePPDTImages(set, TOTAL_PICTURES);
   const { user } = useAuth();
   const startTimeRef = useRef<Date>(new Date());
+  const savedCompleteRef = useRef(false);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [phase, setPhase] = useState<TestPhase>('countdown');
+  const [phase, setPhase] = useState<TestPhase>('viewing');
   const [timeRemaining, setTimeRemaining] = useState(30);
-  const [countdown, setCountdown] = useState(3);
+  const [started, setStarted] = useState(false);
 
   const VIEW_TIME = 30;
   const WRITE_TIME = 240;
   const BREAK_TIME = 30;
 
-  /* ---------------- COUNTDOWN TIMER ---------------- */
-  useEffect(() => {
-    if (phase === 'countdown' && countdown > 0) {
-      const timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    } else if (phase === 'countdown' && countdown === 0) {
-      setPhase('viewing');
-    }
-  }, [phase, countdown]);
-
-  /* ---------------- TIMER ---------------- */
-  useEffect(() => {
-    if (phase === 'completed' || phase === 'countdown') return;
-
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          handlePhaseTransition();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [phase, currentIndex]);
-
-  /* ---------------- PHASE TRANSITION ---------------- */
-  const handlePhaseTransition = () => {
+  const handlePhaseTransition = useCallback(() => {
     if (phase === 'viewing') {
       setPhase('writing');
       setTimeRemaining(WRITE_TIME);
-    } 
-    else if (phase === 'writing') {
+    } else if (phase === 'writing') {
       setPhase('break');
       setTimeRemaining(BREAK_TIME);
-    } 
-    else if (phase === 'break') {
+    } else if (phase === 'break') {
       if (currentIndex < TOTAL_PICTURES - 1) {
-        setCurrentIndex(currentIndex + 1);
+        setCurrentIndex((i) => i + 1);
         setPhase('viewing');
         setTimeRemaining(VIEW_TIME);
       } else {
         setPhase('completed');
       }
     }
-  };
+  }, [phase, currentIndex, TOTAL_PICTURES, WRITE_TIME, BREAK_TIME, VIEW_TIME]);
 
-  /* ================= QUIT TEST ================= */
+  useEffect(() => {
+    if (phase === 'completed' || !started) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => (prev <= 0 ? 0 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [phase, currentIndex, started]);
+
+  useEffect(() => {
+    if (!started || phase === 'completed' || timeRemaining > 0) return;
+    handlePhaseTransition();
+  }, [timeRemaining, started, phase, handlePhaseTransition]);
+
+  const module = getPsychModule('ppdt');
+  useBfCacheLiveTestRecovery(module.routes.sets);
+  const itemsReached = currentIndex + 1;
+
+  useEffect(() => {
+    if (phase !== 'completed' || !user || savedCompleteRef.current) return;
+    savedCompleteRef.current = true;
+    savePsychTestCompleted(user.id, 'ppdt', set, TOTAL_PICTURES, startTimeRef.current);
+  }, [phase, user, set]);
+
   const handleQuit = () => {
-    if (confirm('Are you sure you want to quit this test? Your progress will be saved.')) {
-      if (user && currentIndex > 0) {
-        const endTime = new Date();
-        const totalTimeMinutes = (endTime.getTime() - startTimeRef.current.getTime()) / (1000 * 60);
-        savePracticeSession({
-          id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          userId: user.id,
-          testType: 'ppdt',
-          set: set,
-          startTime: startTimeRef.current.toISOString(),
-          endTime: endTime.toISOString(),
-          status: 'quit',
-          score: 0,
-          totalItems: TOTAL_PICTURES,
-          answeredItems: currentIndex,
-          totalTimeMinutes,
-          responses: []
-        });
-      }
-      navigate('/dashboard');
+    if (!confirm('Quit this set? Progress is saved; the set stays marked partial until you finish all items.')) return;
+    if (user && started) {
+      savePsychTestQuit(user.id, 'ppdt', set, TOTAL_PICTURES, itemsReached, startTimeRef.current);
     }
+    exitLiveActivity(navigate, module.routes.sets);
   };
 
-  /* ---------------- COMPLETED ---------------- */
-
-  // Loading state
-  if (loading) {
+  if (!started) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto" />
-          <p className="text-slate-600">Loading test data...</p>
-        </div>
-      </div>
+      <PsychCandidateVerificationGate label="PPDT" color={module.primary}>
+        <PsychStartCountdown
+          module={module}
+          setLabel={set.replace('set', 'Set ')}
+          loading={loading}
+          onReady={() => setStarted(true)}
+          subtitle="Observe each picture, then write on paper."
+        />
+      </PsychCandidateVerificationGate>
     );
   }
 
   if (phase === 'completed') {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        <Card className="max-w-xl w-full text-center p-8 border">
-          <div className="flex justify-center mb-4">
-            <CheckCircle className="w-14 h-14 text-emerald-600" />
+      <div className="flex h-[100dvh] items-center justify-center bg-[#eef2f7] px-4">
+        <Card className="w-full max-w-md border p-6 text-center">
+          <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-600" />
+          <h2 className="text-lg font-bold">PPDT set completed</h2>
+          <p className="mt-2 text-sm text-slate-600">All {TOTAL_PICTURES} pictures in {set} are done.</p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button onClick={() => exitLiveActivity(navigate, module.routes.sets)} style={{ background: module.primary }} className="text-white">
+              Back to sets
+            </Button>
+            <Button variant="outline" onClick={() => navigate('/dashboard')}>
+              Dashboard
+            </Button>
           </div>
-          <h2 className="text-xl font-semibold mb-2">
-            PPDT Set Completed
-          </h2>
-          <p className="text-sm text-slate-600 mb-6">
-            You have successfully completed all 5 pictures in this set.
-          </p>
-
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-8 py-3 bg-emerald-600 text-white rounded-md font-medium hover:bg-emerald-700"
-          >
-            Back to Dashboard
-          </button>
         </Card>
       </div>
     );
@@ -148,15 +125,8 @@ export default function PPDTTestPage() {
 
   /* ---------------- UI HELPERS ---------------- */
   const progress = ((currentIndex + 1) / TOTAL_PICTURES) * 100;
-  const minutes = Math.floor(timeRemaining / 60);
-  const seconds = timeRemaining % 60;
 
   const phaseConfig = {
-    countdown: {
-      label: 'Get Ready',
-      icon: <Clock className="w-5 h-5" />,
-      note: 'Test will start soon',
-    },
     viewing: {
       label: 'Picture Viewing',
       icon: <Eye className="w-5 h-5" />,
@@ -180,117 +150,42 @@ export default function PPDTTestPage() {
   };
 
   /* ---------------- MAIN RENDER ---------------- */
-  // Countdown screen
-  if (phase === 'countdown') {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-9xl font-bold text-white mb-4 animate-pulse">
-            {countdown}
-          </div>
-          <p className="text-xl text-slate-300">
-            Get ready! Test will start soon...
-          </p>
-          <p className="text-sm text-slate-400 mt-4">
-            Observe the picture carefully when it appears
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const timerDisplay =
+    phase === 'viewing' || phase === 'break'
+      ? `${timeRemaining}s`
+      : `${Math.floor(timeRemaining / 60)}:${String(timeRemaining % 60).padStart(2, '0')}`;
+
+  const runPhases = [
+    { id: 'viewing', label: 'View', icon: <Eye className="h-3 w-3" /> },
+    { id: 'writing', label: 'Write', icon: <PenTool className="h-3 w-3" /> },
+    { id: 'break', label: 'Break', icon: <Coffee className="h-3 w-3" /> },
+  ];
 
   return (
-    <div className="min-h-screen bg-white px-6 py-6">
-
-      <div className="max-w-6xl mx-auto">
-
-        {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold">
-              Picture Perception & Description Test
-            </h1>
-            <p className="text-sm text-slate-600">
-              Picture {currentIndex + 1} of {TOTAL_PICTURES}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-sm text-slate-600 mr-2">
-              Set: {set}
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleQuit}
-              className="text-red-600 border-red-200 hover:bg-red-50"
-            >
-              <XCircle className="w-4 h-4 mr-1" />
-              Quit Test
-            </Button>
-          </div>
-        </div>
-
-        {/* Progress */}
-        <Progress value={progress} className="h-2 mb-6" />
-
-        {/* Phase Indicator */}
-        <div className="flex justify-center gap-4 mb-6">
-          {(['countdown', 'viewing', 'writing', 'break'] as TestPhase[]).map((p) => (
-            <div
-              key={p}
-              className={`px-5 py-2 rounded-md border text-sm font-medium flex items-center gap-2 ${
-                phase === p
-                  ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 text-slate-500'
-              }`}
-            >
-              {phaseConfig[p].icon}
-              {phaseConfig[p].label}
-            </div>
-          ))}
-        </div>
-
-        {/* Main Card */}
-        <Card className="border p-8 text-center">
-
-          {/* Timer */}
-          <div className="flex justify-center mb-6">
-            <div className="flex items-center gap-3 px-8 py-4 border rounded-xl bg-slate-50">
-              <Clock className="w-7 h-7 text-slate-700" />
-              <div>
-                <p className="text-xs text-slate-500">
-                  {phaseConfig[phase].label}
-                </p>
-                <p className="text-3xl font-bold">
-                  {phase === 'viewing' || phase === 'break'
-                    ? `${timeRemaining}s`
-                    : `${minutes}:${seconds.toString().padStart(2, '0')}`}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Picture */}
-          {phase === 'viewing' && images[currentIndex] && (
-            <div>
-              <img
-                src={images[currentIndex].url}
-                alt="PPDT"
-                className="max-h-[420px] mx-auto rounded-lg border"
-              />
-            </div>
-          )}
-
-          {/* Writing / Break Text */}
-          {phase !== 'viewing' && (
-            <div className="text-sm text-slate-600 mt-6">
-              {phaseConfig[phase].note}
-            </div>
-          )}
-
-        </Card>
-
-      </div>
-    </div>
+    <PsychTestRunShell
+      moduleId="ppdt"
+      set={set}
+      progress={progress}
+      itemLine={`Picture ${currentIndex + 1} of ${TOTAL_PICTURES}`}
+      timerLabel={phaseConfig[phase].label}
+      timerDisplay={timerDisplay}
+      phases={runPhases}
+      activePhaseId={phase}
+      onQuit={handleQuit}
+      footerNote={phase !== 'viewing' ? phaseConfig[phase].note : undefined}
+    >
+      {phase === 'viewing' && images[currentIndex] && (
+        <img
+          src={images[currentIndex].url}
+          alt="PPDT stimulus"
+          decoding="async"
+          fetchPriority="high"
+          className="max-h-full max-w-full object-contain"
+        />
+      )}
+      {phase !== 'viewing' && (
+        <p className="max-w-md text-center text-sm text-slate-600">{phaseConfig[phase].note}</p>
+      )}
+    </PsychTestRunShell>
   );
 }

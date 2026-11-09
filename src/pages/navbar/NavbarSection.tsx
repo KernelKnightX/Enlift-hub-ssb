@@ -1,7 +1,6 @@
-import { Link, useNavigate, useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useState, useRef, useEffect } from 'react';
-import { Menu, X, ChevronDown, LogOut } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Menu, X, ChevronDown } from 'lucide-react';
 
 interface NavLink {
   label: string;
@@ -13,8 +12,6 @@ interface NavDropdown {
 }
 
 type NavItem = NavLink | NavDropdown;
-
-const WHATSAPP_NUMBER = '918638075112'; // Your number without + or spaces
 
 const navItems: NavItem[] = [
   { label: 'Home', path: '/' },
@@ -38,9 +35,6 @@ const navItems: NavItem[] = [
       { label: 'Conference', path: '/ssb-conference' },
     ],
   },
-  { label: 'Mentorship', path: '/mentorship' },
-  { label: 'Magazine', path: '/subscription' },
-  { label: 'Blogs', path: '/blog' },
 ];
 
 const css = `
@@ -227,8 +221,6 @@ export function NavbarSection() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownTimeout, setDropdownTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const dropRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
@@ -339,25 +331,7 @@ export function NavbarSection() {
         </div>
 
         <div className="nav-actions">
-          {isAuthenticated ? (
-            <>
-              <Link to="/dashboard" className="nav-btn-ghost">Dashboard</Link>
-              <Link to="/membership" className="nav-btn-ghost">My Membership</Link>
-              <button className="nav-btn-ghost" onClick={() => { logout(); navigate('/'); }}>Logout</button>
-            </>
-          ) : (
-            <>
-              <Link to="/login" className="nav-btn-ghost">Login</Link>
-              <a 
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I'm interested in Enlift Hub SSB coaching programs")}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="nav-btn-primary"
-              >
-                Apply Now
-              </a>
-            </>
-          )}
+          <Link to="/dashboard" className="nav-btn-primary">Practice Dashboard</Link>
         </div>
 
         <button className="nav-hamburger" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -392,26 +366,14 @@ export function NavbarSection() {
             );
           })}
           <div className="nav-mobile-btns">
-            {isAuthenticated ? (
-              <>
-                <Link to="/dashboard" className="nav-btn-ghost" style={{ flex: 1, textAlign: 'center' }} onClick={() => setMobileOpen(false)}>Dashboard</Link>
-                <button className="nav-btn-ghost" onClick={() => { logout(); navigate('/'); setMobileOpen(false); }}>Logout</button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="nav-btn-ghost" style={{ flex: 1, textAlign: 'center' }} onClick={() => setMobileOpen(false)}>Login</Link>
-                <a 
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent("Hi, I'm interested in Enlift Hub SSB coaching programs")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="nav-btn-primary"
-                  style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Apply Now
-                </a>
-              </>
-            )}
+            <Link
+              to="/dashboard"
+              className="nav-btn-primary"
+              style={{ flex: 1, textAlign: 'center', justifyContent: 'center' }}
+              onClick={() => setMobileOpen(false)}
+            >
+              Practice Dashboard
+            </Link>
           </div>
         </div>
       </div>

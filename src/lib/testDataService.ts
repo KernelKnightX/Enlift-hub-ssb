@@ -25,7 +25,8 @@ import type {
   WATWord,
   SRTSituation,
   TestImage,
-  OIRQuestion
+  OIRQuestion,
+  OPAMQuestion,
 } from '@/types/schema';
 
 // Collection names
@@ -39,6 +40,7 @@ const COLLECTIONS = {
   LISTENING_QUESTIONS: 'listeningQuestions',
   SPEED_RECOGNITION_QUESTIONS: 'speedRecognitionQuestions',
   SPEED_RECOGNITION_ATTEMPTS: 'speedRecognitionAttempts',
+  OPAM_QUESTIONS: 'opamQuestions',
 } as const;
 
 // ==================== WAT ====================
@@ -93,6 +95,25 @@ export async function deleteWATSet(setId: string): Promise<void> {
   await Promise.all(batch);
 }
 
+export async function getWATSetSummaries(): Promise<Array<{ setId: string; items: string[] }>> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.WAT_WORDS));
+  const sets = new Map<string, Array<{ order: number; word: string }>>();
+  snapshot.docs.forEach((item) => {
+    const data = item.data();
+    if (typeof data.setId !== 'string' || !data.setId) return;
+    const words = sets.get(data.setId) ?? [];
+    words.push({
+      order: typeof data.order === 'number' ? data.order : Number(data.id) || 0,
+      word: typeof data.word === 'string' ? data.word : '',
+    });
+    sets.set(data.setId, words);
+  });
+  return Array.from(sets, ([setId, words]) => ({
+    setId,
+    items: words.sort((a, b) => a.order - b.order).map(({ word }) => word),
+  })).sort((a, b) => a.setId.localeCompare(b.setId));
+}
+
 // ==================== SRT ====================
 
 export async function getSRTSituations(setId: string): Promise<SRTSituation[]> {
@@ -145,6 +166,25 @@ export async function deleteSRTSet(setId: string): Promise<void> {
   await Promise.all(batch);
 }
 
+export async function getSRTSetSummaries(): Promise<Array<{ setId: string; items: string[] }>> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.SRT_SITUATIONS));
+  const sets = new Map<string, Array<{ order: number; situation: string }>>();
+  snapshot.docs.forEach((item) => {
+    const data = item.data();
+    if (typeof data.setId !== 'string' || !data.setId) return;
+    const situations = sets.get(data.setId) ?? [];
+    situations.push({
+      order: typeof data.order === 'number' ? data.order : Number(data.id) || 0,
+      situation: typeof data.situation === 'string' ? data.situation : '',
+    });
+    sets.set(data.setId, situations);
+  });
+  return Array.from(sets, ([setId, situations]) => ({
+    setId,
+    items: situations.sort((a, b) => a.order - b.order).map(({ situation }) => situation),
+  })).sort((a, b) => a.setId.localeCompare(b.setId));
+}
+
 // ==================== OIR ====================
 
 export async function saveOIRSet(setId: string, questions: OIRQuestion[]): Promise<void> {
@@ -158,6 +198,80 @@ export async function saveOIRSet(setId: string, questions: OIRQuestion[]): Promi
     return setDoc(doc(db, COLLECTIONS.OIR_QUESTIONS, `${setId}_${question.id}`), data);
   });
   await Promise.all(batch);
+}
+
+// ==================== OPAM ====================
+
+export async function getOPAMQuestions(setId: string): Promise<OPAMQuestion[]> {
+  try {
+    const q = query(
+      collection(db, COLLECTIONS.OPAM_QUESTIONS),
+      where('setId', '==', setId)
+    );
+    const snapshot = await getDocs(q);
+
+    if (snapshot.size === 0) {
+      return [];
+    }
+
+    const questions = snapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: typeof data.id === 'number' ? data.id : Number(data.id || 0),
+        section: data.section,
+        prompt: data.prompt,
+        order: data.order || 0,
+      } as OPAMQuestion & { order: number };
+    });
+
+    return questions.sort((a, b) => (a.order || 0) - (b.order || 0));
+  } catch (error) {
+    console.error('Error fetching OPAM questions:', error);
+    return [];
+  }
+}
+
+export async function saveOPAMSet(setId: string, questions: OPAMQuestion[]): Promise<void> {
+  const batch: Promise<void>[] = questions.map((question, index) => {
+    const data = {
+      ...question,
+      setId,
+      order: index + 1,
+      updatedAt: Timestamp.now(),
+    };
+    return setDoc(doc(db, COLLECTIONS.OPAM_QUESTIONS, `${setId}_${question.id}`), data);
+  });
+  await Promise.all(batch);
+}
+
+export async function deleteOPAMSet(setId: string): Promise<void> {
+  const q = query(collection(db, COLLECTIONS.OPAM_QUESTIONS), where('setId', '==', setId));
+  const snapshot = await getDocs(q);
+  const batch: Promise<void>[] = snapshot.docs.map((doc) => deleteDoc(doc.ref));
+  await Promise.all(batch);
+}
+
+export async function getOPAMSetSummaries(): Promise<Array<{ setId: string; questions: OPAMQuestion[] }>> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.OPAM_QUESTIONS));
+  const sets = new Map<string, OPAMQuestion[]>();
+
+  snapshot.docs.forEach((questionDoc) => {
+    const data = questionDoc.data();
+    if (typeof data.setId !== 'string' || !data.setId) return;
+
+    const questions = sets.get(data.setId) ?? [];
+    questions.push({
+      id: typeof data.id === 'number' ? data.id : Number(data.id || 0),
+      section: typeof data.section === 'string' ? data.section : '',
+      prompt: typeof data.prompt === 'string' ? data.prompt : '',
+    });
+    sets.set(data.setId, questions);
+  });
+
+  return Array.from(sets, ([setId, questions]) => ({
+    setId,
+    questions: questions.sort((a, b) => a.id - b.id),
+  })).sort((a, b) => a.setId.localeCompare(b.setId));
 }
 
 // ==================== English Grammar & Vocabulary ====================
@@ -424,6 +538,53 @@ export async function saveTATSet(setId: string, images: TestImage[]): Promise<vo
   await Promise.all(batch);
 }
 
+export async function getTATSetSummaries(): Promise<Array<{ setId: string; images: TestImage[] }>> {
+  const snapshot = await getDocs(collection(db, COLLECTIONS.TAT_IMAGES));
+  const sets = new Map<string, Array<TestImage & { order: number }>>();
+  snapshot.docs.forEach((item) => {
+    const data = item.data();
+    if (typeof data.setId !== 'string' || !data.setId) return;
+    const images = sets.get(data.setId) ?? [];
+    images.push({
+      id: typeof data.id === 'string' ? data.id : item.id,
+      url: typeof data.url === 'string' ? data.url : '',
+      alt: typeof data.alt === 'string' ? data.alt : '',
+      order: typeof data.order === 'number' ? data.order : Number(data.id) || 0,
+    });
+    sets.set(data.setId, images);
+  });
+  return Array.from(sets, ([setId, images]) => ({
+    setId,
+    images: images.sort((a, b) => a.order - b.order).map((image) => ({
+      id: image.id,
+      url: image.url,
+      alt: image.alt,
+    })),
+  })).sort((a, b) => a.setId.localeCompare(b.setId));
+}
+
+export async function deleteTATSet(setId: string): Promise<void> {
+  const q = query(collection(db, COLLECTIONS.TAT_IMAGES), where('setId', '==', setId));
+  const snapshot = await getDocs(q);
+  for (const imageDoc of snapshot.docs) {
+    const imageUrl = imageDoc.data().url;
+    if (typeof imageUrl === 'string' && imageUrl) {
+      const url = new URL(imageUrl);
+      if (url.hostname === 'firebasestorage.googleapis.com') {
+        try {
+          await deleteObject(ref(storage, imageUrl));
+        } catch (error) {
+          const code = typeof error === 'object' && error !== null && 'code' in error
+            ? error.code
+            : undefined;
+          if (code !== 'storage/object-not-found') throw error;
+        }
+      }
+    }
+  }
+  await Promise.all(snapshot.docs.map((imageDoc) => deleteDoc(imageDoc.ref)));
+}
+
 export async function uploadTestImage(
   testType: 'ppdt' | 'tat',
   setId: string,
@@ -503,6 +664,9 @@ export async function getAvailableSets(testType: string): Promise<string[]> {
         break;
       case 'listening':
         collectionName = COLLECTIONS.LISTENING_QUESTIONS;
+        break;
+      case 'opam':
+        collectionName = COLLECTIONS.OPAM_QUESTIONS;
         break;
       default:
         return [];

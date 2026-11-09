@@ -1,22 +1,50 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, CheckCircle, Clock, Crown, Lock, Radar, Star, Target, Zap } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, Lock, Radar, Star, Target, Zap } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCompletedSets } from '@/utils/practiceHistory';
+import { loadRazorpayScript, createRazorpayOrder } from '@/lib/razorpay';
+import { getSetPrice, isSetUnlocked, unlockSet } from '@/lib/setAccess';
 
 export default function SpeedRecognitionSetSelectionPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [selectedSet, setSelectedSet] = useState<number | null>(null);
-  const isPremium = user?.isPremium || false;
+  const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [loading, setLoading] = useState(false);
   const freeSets = 3;
   const completedSets = user ? getCompletedSets(user.id, 'speed-recognition') : [];
 
   const handleSetClick = (setNum: number) => {
-    if (setNum > freeSets && !isPremium) return;
+    if (setNum > freeSets && !isSetUnlocked('speed-recognition', setNum)) {
+      setSelectedSet(setNum);
+      setShowPurchaseModal(true);
+      return;
+    }
     setSelectedSet(setNum);
+  };
+
+  const handlePurchase = async () => {
+    const setNumber = selectedSet || freeSets + 1;
+    setLoading(true);
+    try {
+      await loadRazorpayScript();
+      await createRazorpayOrder(
+        user?.fullName || '',
+        user?.email || '',
+        user?.phoneNumber || '',
+        'speed-recognition',
+        setNumber,
+        getSetPrice(setNumber)
+      );
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('Failed to load payment gateway. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,17 +59,10 @@ export default function SpeedRecognitionSetSelectionPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          {isPremium ? (
-            <Badge className="bg-amber-500 text-xs">
-              <Crown className="w-3 h-3 mr-1" />
-              Premium
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-amber-700 border-amber-300">
-              <Star className="w-3 h-3 mr-1" />
-              Free Sets 1-3
-            </Badge>
-          )}
+          <Badge variant="outline" className="text-amber-700 border-amber-300">
+            <Star className="w-3 h-3 mr-1" />
+            Sets 1-3 free
+          </Badge>
           <Button
             variant="outline"
             size="sm"
@@ -87,14 +108,14 @@ export default function SpeedRecognitionSetSelectionPage() {
 
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-4 mb-6">
           {Array.from({ length: 10 }, (_, index) => index + 1).map((setNum) => {
-            const isLocked = setNum > freeSets && !isPremium;
+            const isLocked = setNum > freeSets && !isSetUnlocked('speed-recognition', setNum);
             const isCompleted = completedSets.includes(`set${setNum}`);
             const isSelected = selectedSet === setNum;
 
             return (
               <button
                 key={setNum}
-                disabled={isLocked}
+                disabled={false}
                 onClick={() => handleSetClick(setNum)}
                 className={`border rounded-lg p-3 sm:p-4 text-center transition relative ${
                   isSelected
@@ -154,6 +175,26 @@ export default function SpeedRecognitionSetSelectionPage() {
           </Button>
         </div>
       </div>
+      {showPurchaseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl text-center">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">
+              Unlock Speed Set {selectedSet}
+            </h2>
+            <p className="text-slate-600 mb-6">
+              This set is locked. Pay once to unlock only this set.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowPurchaseModal(false)}>
+                Maybe Later
+              </Button>
+              <Button className="flex-1 bg-amber-600 hover:bg-amber-700" onClick={handlePurchase} disabled={loading}>
+                {loading ? 'Loading...' : `Pay ₹${getSetPrice(selectedSet || freeSets + 1)}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

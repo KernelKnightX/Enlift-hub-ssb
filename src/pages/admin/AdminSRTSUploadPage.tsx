@@ -1,8 +1,7 @@
-import { useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -17,7 +16,9 @@ import {
   AlertCircle,
   X
 } from 'lucide-react';
-import { saveSRTSet } from '@/lib/testDataService';
+import { deleteSRTSet, getSRTSetSummaries, saveSRTSet } from '@/lib/testDataService';
+import { readJsonFilesFromZip } from '@/lib/adminUploadArchives';
+import { AdminSavedSets } from '@/components/admin/AdminSavedSets';
 import type { SRTSituation } from '@/types/schema';
 
 export default function SRTSUploadPage() {
@@ -26,7 +27,25 @@ export default function SRTSUploadPage() {
   const [situations, setSituations] = useState<SRTSituation[]>([]);
   const [setId, setSetId] = useState('set1');
   const [uploading, setUploading] = useState(false);
+  const [savedSets, setSavedSets] = useState<Array<{ setId: string; items: string[] }>>([]);
+  const [loadingSets, setLoadingSets] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const refreshSets = useCallback(async () => {
+    setLoadingSets(true);
+    try {
+      setSavedSets(await getSRTSetSummaries());
+    } catch (error) {
+      console.error('Failed to load saved SRT sets:', error);
+      setMessage({ type: 'error', text: 'Could not load saved SRT sets. Please refresh and try again.' });
+    } finally {
+      setLoadingSets(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshSets();
+  }, [refreshSets]);
 
   // Predefined set options
   const setOptions = [
@@ -42,30 +61,49 @@ export default function SRTSUploadPage() {
     { value: 'set10', label: 'Set 10' }
   ];
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = '';
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(e.target?.result as string);
-        const json = Array.isArray(parsed) ? parsed : [];
-        const parsedSituations: SRTSituation[] = json.map((item: unknown, index: number) => {
-          const itemObj = item as { situation?: string };
-          return {
-            id: `${index + 1}`,
-            situation: typeof item === 'string' ? item : (itemObj.situation || '')
-          };
-        });
-        
-        setSituations(parsedSituations);
-        setMessage({ type: 'success', text: `Loaded ${parsedSituations.length} situations from JSON` });
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Invalid JSON format. Please check the file.' });
+    try {
+      const jsonFiles = file.name.toLowerCase().endsWith('.zip')
+        ? await readJsonFilesFromZip(file)
+        : [{ name: file.name, content: await file.text() }];
+      if (jsonFiles.length === 0) {
+        throw new Error('The ZIP archive does not contain any JSON files.');
       }
-    };
-    reader.readAsText(file);
+
+      const parsedSituations: SRTSituation[] = jsonFiles.flatMap(({ name, content }) => {
+        const json: unknown = JSON.parse(content);
+        if (!Array.isArray(json)) throw new Error(`${name} must contain a JSON array.`);
+        return json.map((item: unknown, index: number) => {
+          const situation = typeof item === 'string'
+            ? item
+            : typeof item === 'object' && item !== null && 'situation' in item &&
+                typeof item.situation === 'string'
+              ? item.situation
+              : '';
+          if (!situation.trim()) throw new Error(`${name}: situation ${index + 1} is empty or invalid.`);
+          return { id: '', situation: situation.trim() };
+        });
+      }).map((situation, index) => ({ ...situation, id: `${index + 1}` }));
+
+      if (parsedSituations.length === 0) {
+        throw new Error('No situations were found in the selected file.');
+      }
+
+      setSituations(parsedSituations);
+      setMessage({
+        type: 'success',
+        text: `Loaded ${parsedSituations.length} situations from ${jsonFiles.length} JSON file${jsonFiles.length === 1 ? '' : 's'}. Save them to ${setId}.`,
+      });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Unable to read the selected file.',
+      });
+    }
   };
 
   const addSituation = () => {
@@ -101,11 +139,36 @@ export default function SRTSUploadPage() {
       await saveSRTSet(setId, situations);
       setMessage({ type: 'success', text: `Successfully saved ${situations.length} situations to ${setId}` });
       setSituations([]);
+      await refreshSets();
       // Keep setId so user can add more situations to the same set
     } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+      console.error('Failed to save SRT set:', error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Failed to save SRT set: ${error.message}` : 'Failed to save SRT set.' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteSet = async (id: string) => {
+    try {
+      await deleteSRTSet(id);
+      setSavedSets((sets) => sets.filter((set) => set.setId !== id));
+      setMessage({ type: 'success', text: `Deleted SRT set "${id}".` });
+    } catch (error) {
+      console.error(`Failed to delete SRT set ${id}:`, error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Failed to delete "${id}": ${error.message}` : `Failed to delete "${id}".` });
+    }
+  };
+
+  const handleDeleteAllSets = async () => {
+    try {
+      for (const set of savedSets) await deleteSRTSet(set.setId);
+      setSavedSets([]);
+      setMessage({ type: 'success', text: `Deleted all ${savedSets.length} SRT sets.` });
+    } catch (error) {
+      console.error('Failed to delete all SRT sets:', error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Could not delete all SRT sets: ${error.message}` : 'Could not delete all SRT sets.' });
+      await refreshSets();
     }
   };
 
@@ -172,7 +235,7 @@ export default function SRTSUploadPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileJson className="w-5 h-5" />
-              Upload JSON File
+              Upload JSON or ZIP File
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -180,16 +243,16 @@ export default function SRTSUploadPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".json"
-                onChange={handleFileUpload}
+                accept=".json,.zip,application/json,application/zip"
+                onChange={(event) => void handleFileUpload(event)}
                 className="hidden"
               />
               <Upload className="w-10 h-10 mx-auto text-gray-400 mb-4" />
               <p className="text-sm text-gray-600 mb-2">
-                Drag & drop a JSON file or click to browse
+                Choose a JSON file or a ZIP containing JSON files
               </p>
               <p className="text-xs text-gray-500 mb-4">
-                Expected format: Array of situations with "situation" field
+                JSON arrays from a ZIP are combined and saved to the selected set.
               </p>
               <div className="flex justify-center gap-3">
                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
@@ -278,6 +341,19 @@ export default function SRTSUploadPage() {
             )}
           </CardContent>
         </Card>
+
+        <AdminSavedSets
+          title="Previously uploaded SRT sets"
+          description="Expand a set to preview its situations. Deleting removes the full set from the test library."
+          itemLabel="situations"
+          sets={savedSets.map((set) => ({
+            setId: set.setId,
+            previews: set.items.map((situation) => ({ label: situation })),
+          }))}
+          loading={loadingSets}
+          onDelete={handleDeleteSet}
+          onDeleteAll={handleDeleteAllSets}
+        />
 
         {/* Save Button */}
         <div className="mt-6 flex justify-end">

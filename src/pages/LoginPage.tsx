@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { WhatsAppFloatButton } from '@/components/WhatsAppFloatButton';
 import { 
   doc, 
-  getDoc, 
   updateDoc, 
   collection, 
   query, 
@@ -16,7 +15,8 @@ import {
   getDocs, 
   limit 
 } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { RecaptchaVerifier, type ConfirmationResult } from 'firebase/auth';
 import {
   Mail,
   Lock,
@@ -42,13 +42,28 @@ export default function LoginPage() {
   const [showResetPasswordFields, setShowResetPasswordFields] = useState(false);
   const [resetNewPassword, setResetNewPassword] = useState('');
   const [resetConfirmPassword, setResetConfirmPassword] = useState('');
-  const { login } = useAuth();
+  const { login, sendPhoneOtp, completePhoneOtp } = useAuth();
+  const location = useLocation();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [candidateName, setCandidateName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const recaptchaContainer = useRef<HTMLDivElement>(null);
+  const recaptchaVerifier = useRef<RecaptchaVerifier | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+
+  const getContinuePath = () => {
+    const continueTo = new URLSearchParams(location.search).get('continue');
+    return continueTo?.startsWith('/') && !continueTo.startsWith('//') ? continueTo : '/dashboard';
+  };
+
+  useEffect(() => () => recaptchaVerifier.current?.clear(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,10 +75,53 @@ export default function LoginPage() {
       if (isAdminUser) {
         navigate('/admin', { replace: true });
       } else {
-        navigate('/dashboard', { replace: true });
+        navigate(getContinuePath(), { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendPhoneOtp = async () => {
+    setError('');
+    setOtpSent(false);
+    if (!candidateName.trim()) {
+      setError('Enter your name before requesting an SMS code.');
+      return;
+    }
+    if (!recaptchaContainer.current) {
+      setError('Phone verification could not start. Refresh the page and try again.');
+      return;
+    }
+    setLoading(true);
+    try {
+      recaptchaVerifier.current?.clear();
+      recaptchaVerifier.current = new RecaptchaVerifier(auth, recaptchaContainer.current, {
+        size: 'invisible',
+      });
+      const result = await sendPhoneOtp(phoneNumber, recaptchaVerifier.current);
+      setConfirmation(result);
+      setOtpSent(true);
+    } catch (err) {
+      recaptchaVerifier.current?.clear();
+      recaptchaVerifier.current = null;
+      setError(err instanceof Error ? err.message : 'Unable to send an SMS verification code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyPhoneOtp = async () => {
+    if (!confirmation) return;
+    setError('');
+    setLoading(true);
+    try {
+      await completePhoneOtp(confirmation, otp, candidateName);
+      navigate(getContinuePath(), { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to verify the SMS code.');
     } finally {
       setLoading(false);
     }
@@ -110,10 +168,13 @@ export default function LoginPage() {
         const userDoc = userSnapshot.docs[0];
         
         // Update password in localStorage (for fallback auth)
-        const users = JSON.parse(localStorage.getItem('enlift-users') || '[]');
+        const users = JSON.parse(localStorage.getItem('enlift-users') || '[]') as Array<{
+          email: string;
+          [key: string]: unknown;
+        }>;
         
         // Remove any existing entry for this email (to avoid duplicates)
-        const filteredUsers = users.filter((u: any) => u.email !== resetEmail);
+        const filteredUsers = users.filter((u) => u.email !== resetEmail);
         
         // Add user with new password
         const userData = userDoc.data();
@@ -143,7 +204,7 @@ export default function LoginPage() {
           setShowResetPasswordFields(false);
           setResetSuccess(false);
         }, 3000);
-      } catch (err) {
+      } catch {
         setResetError('Failed to reset password. Please try again.');
       } finally {
         setResetLoading(false);
@@ -256,6 +317,79 @@ export default function LoginPage() {
             >
               {loading ? 'Logging in...' : 'Login'}
             </Button>
+
+            <div className="flex items-center gap-3 py-1 text-xs text-gray-500">
+              <span className="h-px flex-1 bg-[#2E4030]" />
+              OR SIGN IN WITH SMS CODE
+              <span className="h-px flex-1 bg-[#2E4030]" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="candidateName" className="text-gray-300">Your name</Label>
+              <Input
+                id="candidateName"
+                name="candidateName"
+                type="text"
+                autoComplete="name"
+                value={candidateName}
+                onChange={(event) => setCandidateName(event.target.value)}
+                placeholder="Enter your full name"
+                className="bg-[#1A2A1B] border-[#2E4030] text-white placeholder:text-gray-500 focus:border-[#C8A84B] focus:ring-[#C8A84B]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phoneNumber" className="text-gray-300">Mobile number</Label>
+              <Input
+                id="phoneNumber"
+                name="phoneNumber"
+                type="tel"
+                autoComplete="tel"
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                placeholder="+91 9876543210"
+                className="bg-[#1A2A1B] border-[#2E4030] text-white placeholder:text-gray-500 focus:border-[#C8A84B] focus:ring-[#C8A84B]"
+              />
+              <p className="text-xs text-gray-500">Include the country code. We’ll send a one-time code by SMS.</p>
+            </div>
+
+            {otpSent && (
+              <div className="space-y-2">
+                <Label htmlFor="phoneOtp" className="text-gray-300">6-digit verification code</Label>
+                <Input
+                  id="phoneOtp"
+                  name="phoneOtp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={otp}
+                  onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="Enter SMS code"
+                  className="bg-[#1A2A1B] border-[#2E4030] text-white placeholder:text-gray-500 focus:border-[#C8A84B] focus:ring-[#C8A84B]"
+                />
+                <Button
+                  type="button"
+                  onClick={handleVerifyPhoneOtp}
+                  className="w-full bg-[#C8A84B] hover:bg-[#E2C26A] text-[#0D1710] font-bold"
+                  disabled={loading || otp.length !== 6}
+                >
+                  {loading ? 'Verifying…' : 'Verify code and sign in'}
+                </Button>
+              </div>
+            )}
+
+            {!otpSent && (
+              <Button
+                type="button"
+                onClick={handleSendPhoneOtp}
+                className="w-full border border-[#C8A84B] bg-transparent text-[#C8A84B] hover:bg-[#C8A84B]/10"
+                disabled={loading}
+              >
+                {loading ? 'Sending SMS…' : 'Send SMS code'}
+              </Button>
+            )}
+            <div ref={recaptchaContainer} />
 
             <p className="text-center text-gray-400">
               Don't have an account?{' '}

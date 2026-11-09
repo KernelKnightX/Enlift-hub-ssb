@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,8 +18,10 @@ import {
   X,
   Image as ImageIcon
 } from 'lucide-react';
-import { saveTATSet } from '@/lib/testDataService';
+import { deleteTATSet, getTATSetSummaries, saveTATSet } from '@/lib/testDataService';
 import { uploadTATImage } from '@/lib/firebaseStorage';
+import { unzipSync } from 'fflate';
+import { AdminSavedSets } from '@/components/admin/AdminSavedSets';
 import type { TestImage } from '@/types/schema';
 
 interface ImageEntry extends TestImage {
@@ -33,7 +35,25 @@ export default function TATUploadPage() {
   const [images, setImages] = useState<ImageEntry[]>([]);
   const [setId, setSetId] = useState('set1');
   const [uploading, setUploading] = useState(false);
+  const [savedSets, setSavedSets] = useState<Array<{ setId: string; images: TestImage[] }>>([]);
+  const [loadingSets, setLoadingSets] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const refreshSets = useCallback(async () => {
+    setLoadingSets(true);
+    try {
+      setSavedSets(await getTATSetSummaries());
+    } catch (error) {
+      console.error('Failed to load saved TAT sets:', error);
+      setMessage({ type: 'error', text: 'Could not load saved TAT sets. Please refresh and try again.' });
+    } finally {
+      setLoadingSets(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshSets();
+  }, [refreshSets]);
 
   // Predefined set options
   const setOptions = [
@@ -46,24 +66,53 @@ export default function TATUploadPage() {
   ];
 
   // Handle multiple image file upload
-  const handleMultipleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files) return;
+  const handleMultipleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (selectedFiles.length === 0) return;
 
-    const newImages: ImageEntry[] = Array.from(files).map((file, index) => ({
+    try {
+      const files = await Promise.all(selectedFiles.map(async (file) => {
+        if (!file.name.toLowerCase().endsWith('.zip')) return [file];
+        const archive = unzipSync(new Uint8Array(await file.arrayBuffer()));
+        return Object.entries(archive)
+          .filter(([path]) =>
+            /\.(png|jpe?g|gif|webp|bmp|avif)$/i.test(path) &&
+            !path.split('/').some((segment) => segment.startsWith('__')),
+          )
+          .sort(([first], [second]) => first.localeCompare(second))
+          .map(([path, contents]) => {
+            const name = path.split('/').pop() || 'image';
+            const extension = name.split('.').pop()?.toLowerCase() || '';
+            const mimeTypes: Record<string, string> = {
+              png: 'image/png',
+              jpg: 'image/jpeg',
+              jpeg: 'image/jpeg',
+              gif: 'image/gif',
+              webp: 'image/webp',
+              bmp: 'image/bmp',
+              avif: 'image/avif',
+            };
+            return new File([contents], name, { type: mimeTypes[extension] || 'application/octet-stream' });
+          });
+      })).then((groups) => groups.flat());
+
+      if (files.length === 0) {
+        throw new Error('The selected ZIP archive does not contain supported image files.');
+      }
+
+      const newImages: ImageEntry[] = files.map((file, index) => ({
       id: `${images.length + index + 1}`,
       url: '',
       alt: file.name.replace(/\.[^/.]+$/, ''), // Use filename without extension as alt
       file,
       preview: URL.createObjectURL(file)
-    }));
+      }));
 
-    setImages([...images, ...newImages]);
-    setMessage({ type: 'success', text: `Added ${newImages.length} images` });
-    
-    // Reset input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      setImages([...images, ...newImages]);
+      setMessage({ type: 'success', text: `Added ${newImages.length} images from ${selectedFiles.length} selected file${selectedFiles.length === 1 ? '' : 's'}.` });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Unable to read selected images.' });
     }
   };
 
@@ -87,7 +136,7 @@ export default function TATUploadPage() {
         
         setImages(parsedImages);
         setMessage({ type: 'success', text: `Loaded ${parsedImages.length} images from JSON` });
-      } catch (error) {
+      } catch {
         setMessage({ type: 'error', text: 'Invalid JSON format. Please check the file.' });
       }
     };
@@ -162,11 +211,35 @@ export default function TATUploadPage() {
       await saveTATSet(setId, uploadedImages);
       setMessage({ type: 'success', text: `Successfully saved ${uploadedImages.length} images to ${setId}` });
       setImages([]);
+      await refreshSets();
     } catch (error) {
       console.error('Error saving:', error);
-      setMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+      setMessage({ type: 'error', text: error instanceof Error ? `Failed to save TAT set: ${error.message}` : 'Failed to save TAT set.' });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDeleteSet = async (id: string) => {
+    try {
+      await deleteTATSet(id);
+      setSavedSets((sets) => sets.filter((set) => set.setId !== id));
+      setMessage({ type: 'success', text: `Deleted TAT set "${id}" and its stored images.` });
+    } catch (error) {
+      console.error(`Failed to delete TAT set ${id}:`, error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Failed to delete "${id}": ${error.message}` : `Failed to delete "${id}".` });
+    }
+  };
+
+  const handleDeleteAllSets = async () => {
+    try {
+      for (const set of savedSets) await deleteTATSet(set.setId);
+      setSavedSets([]);
+      setMessage({ type: 'success', text: `Deleted all ${savedSets.length} TAT sets and their stored images.` });
+    } catch (error) {
+      console.error('Failed to delete all TAT sets:', error);
+      setMessage({ type: 'error', text: error instanceof Error ? `Could not delete all TAT sets: ${error.message}` : 'Could not delete all TAT sets.' });
+      await refreshSets();
     }
   };
 
@@ -264,13 +337,13 @@ export default function TATUploadPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.zip,application/zip"
                 multiple
-                onChange={handleMultipleImageUpload}
+                onChange={(event) => void handleMultipleImageUpload(event)}
                 className="hidden"
               />
               <Upload className="w-12 h-12 mx-auto text-purple-400 mb-4" />
-              <p className="text-sm text-gray-700 mb-2 font-medium">Click to select multiple images</p>
+              <p className="text-sm text-gray-700 mb-2 font-medium">Select images or a ZIP containing images</p>
               <p className="text-xs text-gray-500 mb-4">
                 Select all images you want to upload for this set
               </p>
@@ -364,6 +437,19 @@ export default function TATUploadPage() {
             )}
           </CardContent>
         </Card>
+
+        <AdminSavedSets
+          title="Previously uploaded TAT sets"
+          description="Expand a set to preview its images. Deleting removes its records and Firebase Storage images."
+          itemLabel="images"
+          sets={savedSets.map((set) => ({
+            setId: set.setId,
+            previews: set.images.map((image) => ({ label: image.alt || image.id, imageUrl: image.url })),
+          }))}
+          loading={loadingSets}
+          onDelete={handleDeleteSet}
+          onDeleteAll={handleDeleteAllSets}
+        />
 
         {/* Save Button */}
         <div className="mt-6 flex justify-end">

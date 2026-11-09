@@ -8,15 +8,15 @@ import {
 
 import { useEffect } from 'react';
 
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { AuthProvider } from '@/contexts/AuthContext';
 import AdminRoute from '@/components/AdminRoute';
 
 import LandingPage from '@/pages/LandingPage/LandingPage';
-import RegisterPage from '@/pages/RegisterPage';
-import LoginPage from '@/pages/LoginPage';
 import ResetPasswordPage from '@/pages/ResetPasswordPage';
 import DirectPasswordResetPage from '@/pages/DirectPasswordResetPage';
 import TermsPage from '@/pages/TermsPage';
+import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
 import AdminLoginPage from '@/pages/admin/AdminLoginPage';
 import AdminDashboardPage from '@/pages/admin/AdminDashboardPage';
 import AdminMockTestsPage from '@/pages/admin/AdminMockTestsPage';
@@ -28,10 +28,9 @@ import AdminBlogPage from '@/pages/admin/AdminBlogPage';
 import AdminMagazinePage from '@/pages/admin/AdminMagazinePage';
 import AdminEnglishUploadPage from '@/pages/admin/AdminEnglishUploadPage';
 import AdminListeningUploadPage from '@/pages/admin/AdminListeningUploadPage';
+import AdminOPAMUploadPage from '@/pages/admin/AdminOPAMUploadPage';
 import AdminSpeedRecognitionUploadPage from '@/pages/admin/AdminSpeedRecognitionUploadPage';
 import DashboardPage from '@/pages/DashboardPage';
-import MembershipPage from '@/pages/MembershipPage';
-import MentorshipPage from '@/pages/MentorshipPage';
 import SSBAboutPage from '@/pages/SSB/SSBAboutPage';
 import SSBProcessPage from '@/pages/SSB/SSBProcessPage';
 import SSBQualitiesPage from '@/pages/SSB/SSBQualitiesPage';
@@ -43,8 +42,6 @@ import SSBGTOPage from '@/pages/SSB/SSBGTOPage';
 import SSBLecturettePage from '@/pages/SSB/SSBLecturettePage';
 import SSBConferencePage from '@/pages/SSB/SSBConferencePage';
 import BlogPage from '@/pages/Blog/BlogPage';
-import SubscriptionPage from '@/pages/Subscription/SubscriptionPage';
-import SubscriptionSuccessPage from '@/pages/Subscription/SubscriptionSuccessPage';
 import EnglishInstructionPage from '@/pages/EnglishTest/InstructionPage';
 import EnglishSetSelectionPage from '@/pages/EnglishTest/SetSelectionPage';
 import EnglishGrammarVocabularyTestPage from '@/pages/EnglishTest/EnglishGrammarVocabularyTestPage';
@@ -67,6 +64,10 @@ import WATInstructionPage from '@/pages/WAT/InstructionPage';
 import WATSetSelectionPage from '@/pages/WAT/SetSelectionPage';
 import WATTestPage from '@/pages/WAT/TestPage';
 
+import OPAMInstructionPage from '@/pages/OPAM/InstructionPage';
+import OPAMSetSelectionPage from '@/pages/OPAM/SetSelectionPage';
+import OPAMTestPage from '@/pages/OPAM/TestPage';
+
 import SRTInstructionPage from '@/pages/SRT/InstructionPage';
 import SRTSetSelectionPage from '@/pages/SRT/SetSelectionPage';
 import SRTTestPage from '@/pages/SRT/TestPage';
@@ -79,7 +80,6 @@ import CDSMockTestPage from '@/pages/MockTest/CDS/MockTestPage';
 import AFCATMockTestPage from '@/pages/MockTest/AFCAT/MockTestPage';
 import AFCATTestInterface from '@/pages/MockTest/AFCAT/TestInterface';
 import NDAMockTestPage from '@/pages/MockTest/NDA/MockTestPage';
-import NDATestInterface from '@/pages/MockTest/NDA/TestInterface';
 import MockTestListingPage from '@/pages/MockTest/MockTestListingPage';
 import CDSTestInterface from '@/pages/MockTest/CDS/TestInterface';
 import CDSTestAnalysisPage from '@/pages/MockTest/CDS/TestAnalysisPage';
@@ -89,13 +89,7 @@ import NDATestAnalysisPage from '@/pages/MockTest/NDA/TestAnalysisPage';
 /* -------------------- ROUTE GUARDS -------------------- */
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
-}
-
-function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  return !isAuthenticated ? <>{children}</> : <Navigate to="/dashboard" />;
+  return <>{children}</>;
 }
 
 /* -------------------- SCROLL TO TOP COMPONENT -------------------- */
@@ -120,8 +114,10 @@ function App() {
         <Routes>
           {/* -------- PUBLIC -------- */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/admissions" element={<Navigate to="/mentorship" replace />} />
-          <Route path="/courses" element={<Navigate to="/mentorship" replace />} />
+          <Route path="/admissions" element={<Navigate to="/ssb-preparation" replace />} />
+          <Route path="/courses" element={<Navigate to="/ssb-preparation" replace />} />
+          <Route path="/mentorship" element={<Navigate to="/" replace />} />
+          <Route path="/membership" element={<Navigate to="/" replace />} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:slug" element={<BlogPage />} />
           <Route path="/ssb-info" element={<BlogPage />} />
@@ -137,32 +133,14 @@ function App() {
           <Route path="/ssb-gto" element={<SSBGTOPage />} />
           <Route path="/ssb-conference" element={<SSBConferencePage />} />
 
-          <Route
-            path="/register"
-            element={
-              <PublicRoute>
-                <RegisterPage />
-              </PublicRoute>
-            }
-          />
-
-          <Route
-            path="/login"
-            element={
-              <PublicRoute>
-                <LoginPage />
-              </PublicRoute>
-            }
-          />
-
           <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           <Route path="/direct-reset-password" element={<DirectPasswordResetPage />} />
 
           <Route path="/terms" element={<TermsPage />} />
 
-          <Route path="/subscription" element={<SubscriptionPage />} />
-          <Route path="/subscription/success" element={<SubscriptionSuccessPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           <Route path="/admin-login" element={<AdminLoginPage />} />
 
@@ -266,19 +244,6 @@ function App() {
             }
           />
 
-          {/* -------- MEMBERSHIP / MENTORSHIP (PUBLIC) -------- */}
-          <Route path="/mentorship" element={<MentorshipPage />} />
-
-          {/* -------- MEMBERSHIP (PROTECTED) -------- */}
-          <Route
-            path="/membership"
-            element={
-              <ProtectedRoute>
-                <MembershipPage />
-              </ProtectedRoute>
-            }
-          />
-
           {/* -------- PPDT -------- */}
           <Route
             path="/ppdt/instructions"
@@ -359,6 +324,34 @@ function App() {
             element={
               <ProtectedRoute>
                 <WATTestPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* -------- OPAM -------- */}
+          <Route
+            path="/opam/instructions"
+            element={
+              <ProtectedRoute>
+                <OPAMInstructionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/opam/sets"
+            element={
+              <ProtectedRoute>
+                <OPAMSetSelectionPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/opam/test"
+            element={
+              <ProtectedRoute>
+                <OPAMTestPage />
               </ProtectedRoute>
             }
           />
@@ -460,7 +453,7 @@ function App() {
             path="/mock-test/nda/test"
             element={
               <ProtectedRoute>
-                <NDATestInterface />
+                <AFCATTestInterface />
               </ProtectedRoute>
             }
           />
@@ -522,6 +515,7 @@ function App() {
             <Route path="/admin/tat" element={<AdminTATUploadPage />} />
             <Route path="/admin/ppdt" element={<AdminPPDTUploadPage />} />
             <Route path="/admin/english" element={<AdminEnglishUploadPage />} />
+            <Route path="/admin/opam" element={<AdminOPAMUploadPage />} />
             <Route path="/admin/listening" element={<AdminListeningUploadPage />} />
             <Route path="/admin/speed-recognition" element={<AdminSpeedRecognitionUploadPage />} />
           </Route>

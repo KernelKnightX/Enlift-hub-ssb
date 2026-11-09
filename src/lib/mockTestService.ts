@@ -4,6 +4,7 @@ import {
   getDocs, 
   getDoc, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -12,17 +13,17 @@ import {
   serverTimestamp 
 } from 'firebase/firestore';
 import { db } from './firebase';
-import type { MockTest, MockTestAttempt, ExamType, Difficulty } from '@/types/schema';
+import type { MockTest, MockTestAttempt, MockTestProgress, ExamType, Difficulty } from '@/types/schema';
 
 // Collection names
 const MOCK_TESTS_COLLECTION = 'mockTests';
 const USER_MOCK_TEST_ATTEMPTS_COLLECTION = 'mockTestAttempts';
+const USER_MOCK_TEST_PROGRESS_COLLECTION = 'mockTestProgress';
 
 // Get all mock tests
 export async function getMockTests(): Promise<MockTest[]> {
   const q = query(
     collection(db, MOCK_TESTS_COLLECTION),
-    where('isPublished', '==', true),
     orderBy('createdAt', 'desc')
   );
   const snapshot = await getDocs(q);
@@ -118,6 +119,28 @@ export async function getUserTestAttempts(userId: string, testId: string): Promi
     id: doc.id,
     ...doc.data()
   })) as MockTestAttempt[];
+}
+
+export async function getMockTestProgress(
+  userId: string,
+  testId: string,
+): Promise<MockTestProgress | null> {
+  const progressRef = doc(db, `users/${userId}/${USER_MOCK_TEST_PROGRESS_COLLECTION}`, testId);
+  const snapshot = await getDoc(progressRef);
+  return snapshot.exists() ? snapshot.data() as MockTestProgress : null;
+}
+
+export async function saveMockTestProgress(
+  userId: string,
+  progress: MockTestProgress,
+): Promise<void> {
+  const progressRef = doc(db, `users/${userId}/${USER_MOCK_TEST_PROGRESS_COLLECTION}`, progress.testId);
+  await setDoc(progressRef, progress);
+}
+
+export async function deleteMockTestProgress(userId: string, testId: string): Promise<void> {
+  const progressRef = doc(db, `users/${userId}/${USER_MOCK_TEST_PROGRESS_COLLECTION}`, testId);
+  await deleteDoc(progressRef);
 }
 
 // Get user's best score for a test

@@ -4,21 +4,20 @@ import { Shield } from 'lucide-react';
 const footerLinks = {
   platform: [
     { label: 'Home', path: '/' },
-    { label: 'About SSB', path: '/ssb-info' },
-    { label: 'SSB Process', path: '/ssb-process' },
+    { label: 'SSB Preparation', path: '/ssb-preparation' },
     { label: 'Practice Tests', path: '/register' },
-    { label: 'Current Affairs', path: '/subscription' },
+    { label: 'Mock Tests', path: '/mock-tests' },
   ],
   preparation: [
-    { label: 'PPDT', path: '/ppdt/instructions' },
-    { label: 'TAT', path: '/tat/instructions' },
-    { label: 'WAT', path: '/wat/instructions' },
-    { label: 'SRT', path: '/srt/instructions' },
+    { label: 'PPDT', path: '/ppdt/sets' },
+    { label: 'TAT', path: '/tat/sets' },
+    { label: 'WAT', path: '/wat/sets' },
+    { label: 'SRT', path: '/srt/sets' },
+    { label: 'OPAM', path: '/opam/sets' },
   ],
   support: [
     { label: 'Login', path: '/login' },
     { label: 'Register', path: '/register' },
-    { label: 'Mentorship', path: '/mentorship' },
     { label: 'Terms', path: '/terms' },
   ],
 };

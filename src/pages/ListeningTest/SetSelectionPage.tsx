@@ -8,13 +8,15 @@ import {
   CheckCircle,
   Lock,
   Star,
-  Crown,
   FileText,
   Headphones,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadRazorpayScript, createRazorpayOrder } from '@/lib/razorpay';
+import { getSetPrice, isSetUnlocked, unlockSet } from '@/lib/setAccess';
 import { getCompletedSets } from '@/utils/practiceHistory';
+import { PracticeSetUnlockModal } from '@/components/practice/PracticeSetUnlockModal';
+import { hasPremiumPlan } from '@/lib/premiumAccess';
 
 export default function ListeningSetSelectionPage() {
   const navigate = useNavigate();
@@ -23,15 +25,16 @@ export default function ListeningSetSelectionPage() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const isPremium = user?.isPremium || false;
   const FREE_SETS = 3;
+  const isSetAvailable = (set: number) => set <= FREE_SETS || isSetUnlocked('listening', set);
   
   // Load completed sets
   const completedSets = user ? getCompletedSets(user.id, 'listening') : [];
   const isSetCompleted = (set: number) => completedSets.includes(`set${set}`);
 
   const handleSetClick = (set: number) => {
-    if (set > FREE_SETS && !isPremium) {
+    if (!isSetAvailable(set)) {
+      setSelectedSet(set);
       setShowPremiumModal(true);
       return;
     }
@@ -43,17 +46,13 @@ export default function ListeningSetSelectionPage() {
     try {
       await loadRazorpayScript();
       
-      if (!user) {
-        alert('Please login first');
-        setShowPremiumModal(false);
-        navigate('/login');
-        return;
-      }
-
       await createRazorpayOrder(
-        user.fullName,
-        user.email,
-        user.phoneNumber || ''
+        user?.fullName || '',
+        user?.email || '',
+        user?.phoneNumber || '',
+        'listening',
+        selectedSet || FREE_SETS + 1,
+        getSetPrice(selectedSet || FREE_SETS + 1)
       );
     } catch (error) {
       console.error('Payment error:', error);
@@ -65,19 +64,10 @@ export default function ListeningSetSelectionPage() {
 
   // Test mode - unlock premium without payment (for testing only)
   const handleTestPremium = async () => {
-    if (!user) {
-      alert('Please login first');
-      setShowPremiumModal(false);
-      navigate('/login');
-      return;
-    }
-    
     setLoading(true);
     try {
-      // Import the upgrade function
-      const { upgradeUserToPremium } = await import('@/lib/razorpay');
-      await upgradeUserToPremium('test_payment_' + Date.now());
-      alert('🎉 Premium activated for testing! All sets are now unlocked.');
+      unlockSet('listening', selectedSet || FREE_SETS + 1);
+      alert(`Set ${selectedSet || FREE_SETS + 1} unlocked for testing.`);
       setShowPremiumModal(false);
     } catch (error) {
       console.error('Test premium error:', error);
@@ -89,61 +79,15 @@ export default function ListeningSetSelectionPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-4 sm:px-6 sm:py-6">
-
-      {/* Premium Modal */}
-      {showPremiumModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
-            <div className="text-center">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
-                <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
-              </div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Unlock All 8 Sets</h2>
-              <p className="text-slate-600 mb-4 sm:mb-6 text-sm">
-                Get access to Sets 4-8 and practice with all listening recall sets!
-              </p>
-
-              <div className="bg-amber-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 text-left">
-                <p className="font-semibold text-amber-800 mb-2 text-sm">Premium Benefits:</p>
-                <ul className="text-xs sm:text-sm text-amber-700 space-y-1">
-                  <li>✓ Access to Sets 4-8</li>
-                  <li>✓ Advanced analytics</li>
-                  <li>✓ Speed improvement tracking</li>
-                  <li>✓ No advertisements</li>
-                </ul>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowPremiumModal(false)}
-                >
-                  Maybe Later
-                </Button>
-                <Button
-                  className="flex-1 bg-amber-600 hover:bg-amber-700"
-                  onClick={handleRazorpayPayment}
-                  disabled={loading}
-                >
-                  {loading ? 'Loading...' : 'Pay ₹1'}
-                </Button>
-              </div>
-              <p className="text-xs text-center text-slate-500 mt-3">
-                Test mode: QR payment may not work. Use "Pay ₹1" card payment or click below to test.
-              </p>
-              <Button
-                variant="link"
-                className="w-full mt-2 text-xs text-blue-600"
-                onClick={handleTestPremium}
-                disabled={loading}
-              >
-                🧪 Test Premium (No Payment)
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PracticeSetUnlockModal
+        open={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        testLabel="Listening"
+        setNumber={selectedSet || FREE_SETS + 1}
+        setPrice={getSetPrice(selectedSet || FREE_SETS + 1)}
+        loading={loading}
+        onPaySingleSet={handleRazorpayPayment}
+      />
 
       {/* Top Header */}
       <div className="max-w-6xl mx-auto bg-white border rounded-lg px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
@@ -160,22 +104,18 @@ export default function ListeningSetSelectionPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          {isPremium ? (
-            <Badge className="bg-amber-500 text-xs">
-              <Crown className="w-3 h-3 mr-1" />
-              Premium
-            </Badge>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-amber-600 border-amber-300 flex-1 sm:flex-none"
-              onClick={() => setShowPremiumModal(true)}
-            >
-              <Star className="w-4 h-4 mr-1" />
-              Upgrade - ₹1
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-[#0b3d91] border-[#0b3d91] flex-1 sm:flex-none"
+            onClick={() => {
+              setSelectedSet(FREE_SETS + 1);
+              setShowPremiumModal(true);
+            }}
+          >
+            <Star className="w-4 h-4 mr-1" />
+            {hasPremiumPlan('ssb-complete') ? 'All sets unlocked' : 'Unlock premium sets'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -226,14 +166,14 @@ export default function ListeningSetSelectionPage() {
         {/* Set Grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
           {Array.from({ length: 8 }, (_, i) => i + 1).map((setNum) => {
-            const isLocked = setNum > FREE_SETS && !isPremium;
+            const isLocked = !isSetAvailable(setNum);
             const isCompleted = isSetCompleted(setNum);
 
             return (
               <button
                 key={setNum}
                 onClick={() => handleSetClick(setNum)}
-                disabled={isLocked}
+                disabled={false}
                 className={`border rounded-lg p-3 sm:p-4 text-center transition relative ${
                   selectedSet === setNum
                     ? 'border-sky-600 bg-sky-50'

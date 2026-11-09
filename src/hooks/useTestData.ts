@@ -5,15 +5,18 @@ import { viitQuestionSets } from '@/data/viitQuestions';
 import { ppdtImageSets } from '@/data/ppdtImages';
 import { tatImageSets } from '@/data/tatImages';
 import { oirQuestionSets } from '@/data/oirQuestions';
+import { opamQuestions } from '@/data/opamQuestions';
 import { testConfigs } from '@/data/testConfigs';
 import {
   getWATWords,
   getSRTSituations,
   getPPDTImages,
   getTATImages,
-  getAvailableSets as getFirebaseSets
+  getAvailableSets as getFirebaseSets,
+  getOPAMQuestions,
 } from '@/lib/testDataService';
-import type { WATWord, SRTSituation, VIITQuestion, TestImage, TestConfig, OIRQuestion } from '@/types/schema';
+import { prefetchTestImages } from '@/lib/prefetchTestImages';
+import type { WATWord, SRTSituation, VIITQuestion, TestImage, TestConfig, OIRQuestion, OPAMQuestion } from '@/types/schema';
 import type { TestType } from '@/types/enums';
 
 // ==================== SET LISTING ====================
@@ -43,6 +46,9 @@ export function useAvailableSets(testType: TestType) {
             break;
           case 'tat':
             localSets = Object.keys(tatImageSets);
+            break;
+          case 'opam':
+            localSets = ['opam-default'];
             break;
         }
         
@@ -80,25 +86,23 @@ export function useWATWords(set: string, count: number): { data: WATWord[]; load
 
   useEffect(() => {
     const loadWords = async () => {
+      const localData = (watWordSets[set] || []).slice(0, count);
+      if (localData.length > 0) {
+        setData(localData);
+        setLoading(false);
+      }
       try {
-        // Try Firebase first
         const firebaseData = await getWATWords(set);
-        
         if (firebaseData.length > 0) {
-          // Use Firebase data
           setData(firebaseData.slice(0, count));
-        } else {
-          // Fall back to local data
-          const localData = watWordSets[set] || [];
-          setData(localData.slice(0, count));
+        } else if (localData.length === 0) {
+          setData([]);
         }
       } catch (error) {
         console.error('Error loading WAT words:', error);
-        // Fall back to local data on error
-        const localData = watWordSets[set] || [];
-        setData(localData.slice(0, count));
+        if (localData.length === 0) setData(localData);
       } finally {
-        setLoading(false);
+        if (localData.length === 0) setLoading(false);
       }
     };
 
@@ -114,21 +118,23 @@ export function useSRTSituations(set: string, count: number): { data: SRTSituati
 
   useEffect(() => {
     const loadSituations = async () => {
+      const localData = (srtSituationSets[set] || []).slice(0, count);
+      if (localData.length > 0) {
+        setData(localData);
+        setLoading(false);
+      }
       try {
         const firebaseData = await getSRTSituations(set);
-        
         if (firebaseData.length > 0) {
           setData(firebaseData.slice(0, count));
-        } else {
-          const localData = srtSituationSets[set] || [];
-          setData(localData.slice(0, count));
+        } else if (localData.length === 0) {
+          setData([]);
         }
       } catch (error) {
         console.error('Error loading SRT situations:', error);
-        const localData = srtSituationSets[set] || [];
-        setData(localData.slice(0, count));
+        if (localData.length === 0) setData(localData);
       } finally {
-        setLoading(false);
+        if (localData.length === 0) setLoading(false);
       }
     };
 
@@ -166,31 +172,74 @@ export function useOIRQuestions(set: string, count: number): { data: OIRQuestion
   return { data, loading };
 }
 
-export function usePPDTImages(set: string, count: number): { data: TestImage[]; loading: boolean } {
-  const [data, setData] = useState<TestImage[]>([]);
+export function useOPAMQuestions(set: string, count: number): { data: OPAMQuestion[]; loading: boolean } {
+  const [data, setData] = useState<OPAMQuestion[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadImages = async () => {
+    const loadQuestions = async () => {
       try {
-        const firebaseData = await getPPDTImages(set);
-        
+        const firebaseData = await getOPAMQuestions(set);
+
         if (firebaseData.length > 0) {
           setData(firebaseData.slice(0, count));
         } else {
-          const localData = ppdtImageSets[set] || [];
-          setData(localData.slice(0, count));
+          const localData = opamQuestions.filter((item) => item.id <= count);
+          setData(localData);
         }
       } catch (error) {
-        console.error('Error loading PPDT images:', error);
-        const localData = ppdtImageSets[set] || [];
-        setData(localData.slice(0, count));
+        console.error('Error loading OPAM questions:', error);
+        const localData = opamQuestions.filter((item) => item.id <= count);
+        setData(localData);
       } finally {
         setLoading(false);
       }
     };
 
+    loadQuestions();
+  }, [set, count]);
+
+  return { data, loading };
+}
+
+export function usePPDTImages(set: string, count: number): { data: TestImage[]; loading: boolean } {
+  const [data, setData] = useState<TestImage[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const localData = (ppdtImageSets[set] || []).slice(0, count);
+
+    if (localData.length > 0) {
+      setData(localData);
+      setLoading(false);
+      prefetchTestImages(localData);
+    }
+
+    const loadImages = async () => {
+      try {
+        const firebaseData = await getPPDTImages(set);
+        if (cancelled) return;
+
+        if (firebaseData.length > 0) {
+          const slice = firebaseData.slice(0, count);
+          setData(slice);
+          prefetchTestImages(slice);
+        } else if (localData.length === 0) {
+          setData([]);
+        }
+      } catch (error) {
+        console.error('Error loading PPDT images:', error);
+        if (!cancelled && localData.length === 0) setData([]);
+      } finally {
+        if (!cancelled && localData.length === 0) setLoading(false);
+      }
+    };
+
     loadImages();
+    return () => {
+      cancelled = true;
+    };
   }, [set, count]);
 
   return { data, loading };
@@ -201,30 +250,39 @@ export function useTATImages(set: string, count: number): { data: TestImage[]; l
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+    const localData = (tatImageSets[set] || []).slice(0, count);
+
+    if (localData.length > 0) {
+      setData(localData);
+      setLoading(false);
+      prefetchTestImages(localData);
+    }
+
     const loadImages = async () => {
-      console.log('[TAT] Fetching images for set:', set);
       try {
         const firebaseData = await getTATImages(set);
-        console.log('[TAT] Firebase data returned:', firebaseData.length, 'images');
-        
+        if (cancelled) return;
+
         if (firebaseData.length > 0) {
-          setData(firebaseData.slice(0, count));
-        } else {
-          console.log('[TAT] No Firebase data, checking local data...');
-          const localData = tatImageSets[set] || [];
-          console.log('[TAT] Local data:', localData.length, 'images');
-          setData(localData.slice(0, count));
+          const slice = firebaseData.slice(0, count);
+          setData(slice);
+          prefetchTestImages(slice);
+        } else if (localData.length === 0) {
+          setData([]);
         }
       } catch (error) {
         console.error('[TAT] Error loading TAT images:', error);
-        const localData = tatImageSets[set] || [];
-        setData(localData.slice(0, count));
+        if (!cancelled && localData.length === 0) setData([]);
       } finally {
-        setLoading(false);
+        if (!cancelled && localData.length === 0) setLoading(false);
       }
     };
 
     loadImages();
+    return () => {
+      cancelled = true;
+    };
   }, [set, count]);
 
   return { data, loading };
@@ -248,6 +306,8 @@ export function useTestQuestions(testType: TestType, set: string, count: number)
       return useVIITQuestions(set, count);
     case 'oir':
       return useOIRQuestions(set, count);
+    case 'opam':
+      return useOPAMQuestions(set, count);
     default:
       return { data: [], loading: false };
   }

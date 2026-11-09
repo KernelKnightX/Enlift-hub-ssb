@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { loadRazorpayScript, createRazorpayOrder } from '@/lib/razorpay';
+import { getSetPrice, isSetUnlocked, unlockSet } from '@/lib/setAccess';
 import { getCompletedSets } from '@/utils/practiceHistory';
 
 export default function PaperFoldingSetSelectionPage() {
@@ -23,15 +24,16 @@ export default function PaperFoldingSetSelectionPage() {
   const [showPremiumModal, setShowPremiumModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const isPremium = user?.isPremium || false;
   const FREE_SETS = 3;
+  const isSetAvailable = (set: number) => set <= FREE_SETS || isSetUnlocked('paper-folding', set);
   
   // Load completed sets
   const completedSets = user ? getCompletedSets(user.id, 'paper-folding') : [];
   const isSetCompleted = (set: number) => completedSets.includes(`set${set}`);
 
   const handleSetClick = (set: number) => {
-    if (set > FREE_SETS && !isPremium) {
+    if (!isSetAvailable(set)) {
+      setSelectedSet(set);
       setShowPremiumModal(true);
       return;
     }
@@ -43,17 +45,13 @@ export default function PaperFoldingSetSelectionPage() {
     try {
       await loadRazorpayScript();
       
-      if (!user) {
-        alert('Please login first');
-        setShowPremiumModal(false);
-        navigate('/login');
-        return;
-      }
-
       await createRazorpayOrder(
-        user.fullName,
-        user.email,
-        user.phoneNumber || ''
+        user?.fullName || '',
+        user?.email || '',
+        user?.phoneNumber || '',
+        'paper-folding',
+        selectedSet || FREE_SETS + 1,
+        getSetPrice(selectedSet || FREE_SETS + 1)
       );
     } catch (error) {
       console.error('Payment error:', error);
@@ -65,19 +63,10 @@ export default function PaperFoldingSetSelectionPage() {
 
   // Test mode - unlock premium without payment (for testing only)
   const handleTestPremium = async () => {
-    if (!user) {
-      alert('Please login first');
-      setShowPremiumModal(false);
-      navigate('/login');
-      return;
-    }
-    
     setLoading(true);
     try {
-      // Import the upgrade function
-      const { upgradeUserToPremium } = await import('@/lib/razorpay');
-      await upgradeUserToPremium('test_payment_' + Date.now());
-      alert('🎉 Premium activated for testing! All sets are now unlocked.');
+      unlockSet('paper-folding', selectedSet || FREE_SETS + 1);
+      alert(`Set ${selectedSet || FREE_SETS + 1} unlocked for testing.`);
       setShowPremiumModal(false);
     } catch (error) {
       console.error('Test premium error:', error);
@@ -98,13 +87,13 @@ export default function PaperFoldingSetSelectionPage() {
               <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-amber-100 rounded-full flex items-center justify-center mb-4">
                 <Crown className="w-6 h-6 sm:w-8 sm:h-8 text-amber-600" />
               </div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Unlock All 8 Sets</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">Unlock Set {selectedSet || FREE_SETS + 1}</h2>
               <p className="text-slate-600 mb-4 sm:mb-6 text-sm">
-                Get access to Sets 4-8 and practice with all spatial reasoning sets!
+                Unlock only the selected paper folding set.
               </p>
 
               <div className="bg-amber-50 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6 text-left">
-                <p className="font-semibold text-amber-800 mb-2 text-sm">Premium Benefits:</p>
+                <p className="font-semibold text-amber-800 mb-2 text-sm">Set unlock:</p>
                 <ul className="text-xs sm:text-sm text-amber-700 space-y-1">
                   <li>✓ Access to Sets 4-8</li>
                   <li>✓ Advanced analytics</li>
@@ -126,20 +115,12 @@ export default function PaperFoldingSetSelectionPage() {
                   onClick={handleRazorpayPayment}
                   disabled={loading}
                 >
-                  {loading ? 'Loading...' : 'Pay ₹1'}
+                  {loading ? 'Loading...' : `Pay ₹${getSetPrice(selectedSet || FREE_SETS + 1)}`}
                 </Button>
               </div>
               <p className="text-xs text-center text-slate-500 mt-3">
-                Test mode: QR payment may not work. Use "Pay ₹1" card payment or click below to test.
+                Each set is unlocked separately after successful payment.
               </p>
-              <Button
-                variant="link"
-                className="w-full mt-2 text-xs text-blue-600"
-                onClick={handleTestPremium}
-                disabled={loading}
-              >
-                🧪 Test Premium (No Payment)
-              </Button>
             </div>
           </div>
         </div>
@@ -160,22 +141,18 @@ export default function PaperFoldingSetSelectionPage() {
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          {isPremium ? (
-            <Badge className="bg-amber-500 text-xs">
-              <Crown className="w-3 h-3 mr-1" />
-              Premium
-            </Badge>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-amber-600 border-amber-300 flex-1 sm:flex-none"
-              onClick={() => setShowPremiumModal(true)}
-            >
-              <Star className="w-4 h-4 mr-1" />
-              Upgrade - ₹1
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-amber-600 border-amber-300 flex-1 sm:flex-none"
+            onClick={() => {
+              setSelectedSet(FREE_SETS + 1);
+              setShowPremiumModal(true);
+            }}
+          >
+            <Star className="w-4 h-4 mr-1" />
+            Unlock sets individually
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -226,14 +203,14 @@ export default function PaperFoldingSetSelectionPage() {
         {/* Set Grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-4 mb-6">
           {Array.from({ length: 8 }, (_, i) => i + 1).map((setNum) => {
-            const isLocked = setNum > FREE_SETS && !isPremium;
+            const isLocked = !isSetAvailable(setNum);
             const isCompleted = isSetCompleted(setNum);
 
             return (
               <button
                 key={setNum}
                 onClick={() => handleSetClick(setNum)}
-                disabled={isLocked}
+                disabled={false}
                 className={`border rounded-lg p-3 sm:p-4 text-center transition relative ${
                   selectedSet === setNum
                     ? 'border-indigo-600 bg-indigo-50'

@@ -53,9 +53,11 @@ const BLANK_FORM = {
   totalQuestions: 100,
   totalMarks: 100,
   positiveMarking: 1,
-  negativeMarking: 0.33,
+  negativeMarking: 0.25,
   passingScore: 40,
   isPublished: true,
+  isFree: true,
+  price: 0,
 };
 
 /* ─── CSV TEMPLATE ─── */
@@ -66,29 +68,42 @@ Who wrote the Indian national anthem?,Rabindranath Tagore,Bankim Chandra,Mahatma
 What is the largest state of India by area?,Rajasthan,Madhya Pradesh,Uttar Pradesh,Maharashtra,0,Rajasthan covers 342239 sq km making it the largest state.,Geography,easy,NCERT`;
 
 /* ─── HELPERS ─── */
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
+function parseCSVRecords(csv: string): string[][] {
+  const records: string[][] = [];
+  let record: string[] = [];
+  let field = '';
   let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+  for (let i = 0; i < csv.length; i++) {
+    const ch = csv[i];
     if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      if (inQuotes && csv[i + 1] === '"') { field += '"'; i++; }
       else inQuotes = !inQuotes;
     } else if (ch === ',' && !inQuotes) {
-      result.push(current.trim());
-      current = '';
+      record.push(field.trim());
+      field = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      record.push(field.trim());
+      if (record.some((value) => value.length > 0)) records.push(record);
+      record = [];
+      field = '';
+      if (ch === '\r' && csv[i + 1] === '\n') i++;
     } else {
-      current += ch;
+      field += ch;
     }
   }
-  result.push(current.trim());
-  return result;
+  if (inQuotes) throw new Error('The CSV contains an unclosed quoted field.');
+  record.push(field.trim());
+  if (record.some((value) => value.length > 0)) records.push(record);
+  return records;
 }
 
 function safeInt(val: string | number, fallback = 0): number {
   const n = typeof val === 'number' ? val : parseInt(val);
   return isNaN(n) ? fallback : n;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /* ─── CSS ─── */
@@ -247,6 +262,7 @@ const css = `
 
   /* CSV FORMAT NOTE */
   .adm-format-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 12px 14px; font-size: 12px; color: #92400e; line-height: 1.6; margin-bottom: 16px; }
+  .adm-requirement-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 5px; padding: 10px 12px; font-size: 12px; color: #92400e; margin-top: 14px; }
 
   /* LOADING */
   .adm-loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
@@ -316,8 +332,8 @@ export default function AdminMockTestsPage() {
     try {
       const data = await getMockTests();
       setTests(data);
-    } catch {
-      showMsg('error', 'Failed to load tests.');
+    } catch (error) {
+      showMsg('error', `Failed to load tests: ${getErrorMessage(error)}`);
     } finally {
       setLoading(false);
     }
@@ -336,6 +352,8 @@ export default function AdminMockTestsPage() {
 
   /* ─── FORM HELPERS ─── */
   const resetForm = () => { setFormData({ ...BLANK_FORM }); setQuestions([]); };
+  const isTestFree = (test: MockTest) =>
+    test.isFree ?? tests.filter((item) => item.examName === test.examName && item.isPublished).findIndex((item) => item.id === test.id) === 0;
 
   const openCreate = () => {
     setEditingTest(null);
@@ -356,9 +374,11 @@ export default function AdminMockTestsPage() {
       totalQuestions: test.totalQuestions || 100,
       totalMarks: test.totalMarks || 100,
       positiveMarking: test.positiveMarking || 1,
-      negativeMarking: test.negativeMarking || 0.33,
+      negativeMarking: test.negativeMarking ?? 0.25,
       passingScore: test.passingScore || 40,
       isPublished: test.isPublished ?? true,
+      isFree: isTestFree(test),
+      price: test.price ?? 99,
     });
     setQuestions(test.questions || []);
     setShowCreateModal(true);
@@ -380,33 +400,62 @@ export default function AdminMockTestsPage() {
   };
 
   const processFile = (file: File) => {
-    if (!file.name.endsWith('.csv')) { showMsg('error', 'Please upload a .csv file.'); return; }
+    if (!file.name.toLowerCase().endsWith('.csv')) { showMsg('error', 'Please upload a .csv file.'); return; }
     setCsvFile(file);
     const reader = new FileReader();
     reader.onload = e => {
-      const lines = (e.target?.result as string).split('\n').filter(l => l.trim());
-      if (lines.length < 2) { showMsg('error', 'CSV is empty or has no data rows.'); return; }
-      const parsed: MockTestQuestion[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const vals = parseCSVLine(lines[i].trim());
-        if (vals.length >= 5 && vals[0]?.trim()) {
-          // FIX #9: correctAnswer is 0-indexed in CSV — use directly
-          const correctIdx = safeInt(vals[5], 0);
+      try {
+        const records = parseCSVRecords(String(e.target?.result ?? ''));
+        if (records.length < 2) throw new Error('CSV is empty or has no data rows.');
+
+        const headers = records[0].map((value, index) =>
+          (index === 0 ? value.replace(/^\uFEFF/, '') : value).trim().toLowerCase(),
+        );
+        const requiredHeaders = ['question', 'option1', 'option2', 'option3', 'option4', 'correctanswer'];
+        const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+        if (missingHeaders.length) {
+          throw new Error(`CSV is missing required column${missingHeaders.length > 1 ? 's' : ''}: ${missingHeaders.join(', ')}.`);
+        }
+
+        const column = (name: string) => headers.indexOf(name);
+        const parsed: MockTestQuestion[] = [];
+        for (let i = 1; i < records.length; i++) {
+          const values = records[i];
+          const rowNumber = i + 1;
+          const get = (name: string) => values[column(name)]?.trim() ?? '';
+          const question = get('question');
+          const options = ['option1', 'option2', 'option3', 'option4'].map(get);
+          const correctAnswerText = get('correctanswer');
+          const correctAnswer = Number(correctAnswerText);
+
+          if (!question) throw new Error(`Row ${rowNumber}: question is empty.`);
+          if (options.some((option) => !option)) throw new Error(`Row ${rowNumber}: all four answer options are required.`);
+          if (!/^[0-3]$/.test(correctAnswerText) || !Number.isInteger(correctAnswer)) {
+            throw new Error(`Row ${rowNumber}: correctAnswer must be 0, 1, 2, or 3.`);
+          }
+
+          const difficultyText = get('difficulty').toLowerCase();
+          const difficulty: Difficulty = ['easy', 'medium', 'hard'].includes(difficultyText)
+            ? difficultyText as Difficulty
+            : 'medium';
           parsed.push({
-            id: i,
-            question: vals[0].trim(),
-            options: [vals[1]?.trim() || '', vals[2]?.trim() || '', vals[3]?.trim() || '', vals[4]?.trim() || ''],
-            correctAnswer: correctIdx,
-            explanation: vals[6]?.trim() || '',
-            subject: vals[7]?.trim() || formData.subject,
-            difficulty: (vals[8]?.trim() as Difficulty) || 'medium',
-            source: vals[9]?.trim() || '',
+            id: parsed.length + 1,
+            question,
+            options,
+            correctAnswer,
+            explanation: get('explanation'),
+            subject: get('subject') || formData.subject,
+            difficulty,
+            source: get('source'),
           });
         }
+
+        setCsvPreview(parsed);
+        showMsg('success', `Parsed all ${parsed.length} questions successfully.`);
+      } catch (error) {
+        setCsvPreview([]);
+        showMsg('error', `Could not parse CSV: ${getErrorMessage(error)}`);
       }
-      if (!parsed.length) { showMsg('error', 'No valid questions found. Check the CSV format.'); return; }
-      setCsvPreview(parsed);
-      showMsg('success', `Parsed ${parsed.length} questions successfully.`);
     };
     reader.onerror = () => showMsg('error', 'Error reading file.');
     reader.readAsText(file);
@@ -424,11 +473,13 @@ export default function AdminMockTestsPage() {
     if (!csvPreview.length) { showMsg('error', 'No questions parsed yet.'); return; }
     if (!formData.title.trim()) { showMsg('error', 'Test title is required.'); return; }
     if (!formData.examName) { showMsg('error', 'Exam name is required.'); return; }
+    if (!formData.isFree && formData.price <= 0) { showMsg('error', 'Paid tests must have a price greater than zero.'); return; }
     setCsvUploading(true);
     try {
       await createMockTest({
         ...formData,
         totalQuestions: csvPreview.length,
+        totalMarks: csvPreview.length * formData.positiveMarking,
         questions: csvPreview,
         createdBy: 'admin',
       });
@@ -437,8 +488,8 @@ export default function AdminMockTestsPage() {
       setCsvFile(null); setCsvPreview([]);
       resetForm();
       loadTests();
-    } catch {
-      showMsg('error', 'Failed to create test from CSV.');
+    } catch (error) {
+      showMsg('error', `Failed to create test from CSV: ${getErrorMessage(error)}`);
     } finally {
       setCsvUploading(false);
     }
@@ -448,9 +499,15 @@ export default function AdminMockTestsPage() {
   const handleSave = async () => {
     if (!formData.title.trim()) { showMsg('error', 'Title is required.'); return; }
     if (!formData.examName) { showMsg('error', 'Exam name is required.'); return; }
+    if (!formData.isFree && formData.price <= 0) { showMsg('error', 'Paid tests must have a price greater than zero.'); return; }
     setSaving(true);
     try {
-      const payload = { ...formData, questions };
+      const payload = {
+        ...formData,
+        totalQuestions: questions.length,
+        totalMarks: questions.length * formData.positiveMarking,
+        questions,
+      };
       if (editingTest?.id) {
         await updateMockTest(editingTest.id, payload);
         showMsg('success', 'Test updated successfully.');
@@ -462,8 +519,8 @@ export default function AdminMockTestsPage() {
       setEditingTest(null);
       resetForm();
       loadTests();
-    } catch {
-      showMsg('error', 'Failed to save test.');
+    } catch (error) {
+      showMsg('error', `Failed to save test: ${getErrorMessage(error)}`);
     } finally {
       setSaving(false);
     }
@@ -631,6 +688,7 @@ export default function AdminMockTestsPage() {
                     <th>Difficulty</th>
                     <th>Questions</th>
                     <th>Duration</th>
+                    <th>Access</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -651,6 +709,7 @@ export default function AdminMockTestsPage() {
                           <Clock size={13} color="#aaa" />{test.duration} min
                         </span>
                       </td>
+                      <td>{isTestFree(test) ? 'Free' : `₹${test.price ?? 0}`}</td>
                       <td>
                         {test.isPublished
                           ? <span className="badge badge-green"><CheckCircle size={10} /> Published</span>
@@ -712,15 +771,28 @@ export default function AdminMockTestsPage() {
               <div className="adm-form-grid" style={{ marginBottom: 16 }}>
                 <div className="adm-field adm-form-full">
                   <label className="adm-label">Test Title *</label>
-                  <input className="adm-input" placeholder="e.g. CDS GK Mock Test 1" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} />
+                  <input required className="adm-input" placeholder="e.g. CDS GK Mock Test 1" value={formData.title} onChange={e => setFormData(f => ({ ...f, title: e.target.value }))} />
                 </div>
                 <div className="adm-field">
                   <label className="adm-label">Exam *</label>
-                  <select className="adm-native-select" value={formData.examName} onChange={e => setFormData(f => ({ ...f, examName: e.target.value }))}>
+                  <select required className="adm-native-select" value={formData.examName} onChange={e => setFormData(f => ({ ...f, examName: e.target.value }))}>
                     <option value="">Select exam…</option>
                     {EXAM_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
+                <div className="adm-field">
+                  <label className="adm-label">Access *</label>
+                  <select className="adm-native-select" value={formData.isFree ? 'free' : 'paid'} onChange={e => setFormData(f => ({ ...f, isFree: e.target.value === 'free', price: e.target.value === 'free' ? 0 : (f.price || 99) }))}>
+                    <option value="free">Free</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+                {!formData.isFree && (
+                  <div className="adm-field">
+                    <label className="adm-label">Price (₹) *</label>
+                    <input required min="1" type="number" className="adm-input" value={formData.price} onChange={e => setNum('price', e.target.value)} />
+                  </div>
+                )}
                 <div className="adm-field">
                   <label className="adm-label">Subject</label>
                   <select className="adm-native-select" value={formData.subject} onChange={e => setFormData(f => ({ ...f, subject: e.target.value }))}>
@@ -733,11 +805,18 @@ export default function AdminMockTestsPage() {
                   <input type="number" className="adm-input" value={formData.duration} onChange={e => setNum('duration', e.target.value)} />
                 </div>
                 <div className="adm-field">
-                  <label className="adm-label">Total Marks</label>
-                  {/* FIX #5: safeInt used — no NaN */}
-                  <input type="number" className="adm-input" value={formData.totalMarks} onChange={e => setNum('totalMarks', e.target.value)} />
+                  <label className="adm-label">Marks per correct answer</label>
+                  <input type="number" min="0" step="0.01" className="adm-input" value={formData.positiveMarking} onChange={e => setFormData(f => ({ ...f, positiveMarking: parseFloat(e.target.value) || 0 }))} />
+                </div>
+                <div className="adm-field">
+                  <label className="adm-label">Penalty per wrong answer</label>
+                  <input type="number" min="0" step="0.01" className="adm-input" value={formData.negativeMarking} onChange={e => setFormData(f => ({ ...f, negativeMarking: parseFloat(e.target.value) || 0 }))} />
                 </div>
               </div>
+              <p className="adm-modal-sub" style={{ marginBottom: 16 }}>
+                Unanswered questions score 0. Maximum marks are calculated from the uploaded question count.
+                {csvPreview.length > 0 && ` Current maximum: ${csvPreview.length * formData.positiveMarking} marks.`}
+              </p>
 
               {/* DROP ZONE */}
               <div
@@ -790,6 +869,11 @@ export default function AdminMockTestsPage() {
                   </div>
                 </>
               )}
+              {csvPreview.length > 0 && (!formData.title.trim() || !formData.examName) && (
+                <div className="adm-requirement-note">
+                  Questions are ready. Enter a test title and select an exam above to enable creation.
+                </div>
+              )}
             </div>
 
             <div className="adm-modal-footer">
@@ -799,7 +883,7 @@ export default function AdminMockTestsPage() {
               </button>
               <button
                 className="btn btn-primary"
-                disabled={csvUploading || !csvPreview.length || !formData.title || !formData.examName}
+                disabled={csvUploading || !csvPreview.length || !formData.title.trim() || !formData.examName}
                 onClick={handleCsvUpload}
               >
                 {csvUploading ? 'Creating…' : `Create Test (${csvPreview.length} Qs)`}
@@ -841,6 +925,19 @@ export default function AdminMockTestsPage() {
                   </select>
                 </div>
                 <div className="adm-field">
+                  <label className="adm-label">Access *</label>
+                  <select className="adm-native-select" value={formData.isFree ? 'free' : 'paid'} onChange={e => setFormData(f => ({ ...f, isFree: e.target.value === 'free', price: e.target.value === 'free' ? 0 : (f.price || 99) }))}>
+                    <option value="free">Free</option>
+                    <option value="paid">Paid</option>
+                  </select>
+                </div>
+                {!formData.isFree && (
+                  <div className="adm-field">
+                    <label className="adm-label">Price (₹) *</label>
+                    <input required min="1" type="number" className="adm-input" value={formData.price} onChange={e => setNum('price', e.target.value)} />
+                  </div>
+                )}
+                <div className="adm-field">
                   <label className="adm-label">Exam Type</label>
                   <select className="adm-native-select" value={formData.examType} onChange={e => setFormData(f => ({ ...f, examType: e.target.value as ExamType }))}>
                     {EXAM_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -864,15 +961,15 @@ export default function AdminMockTestsPage() {
                   <input type="number" className="adm-input" value={formData.duration} onChange={e => setNum('duration', e.target.value)} />
                 </div>
                 <div className="adm-field">
-                  <label className="adm-label">Total Marks</label>
-                  <input type="number" className="adm-input" value={formData.totalMarks} onChange={e => setNum('totalMarks', e.target.value)} />
+                  <label className="adm-label">Maximum Marks (auto)</label>
+                  <input type="number" className="adm-input" value={questions.length * formData.positiveMarking} readOnly />
                 </div>
                 <div className="adm-field">
-                  <label className="adm-label">Positive Marking</label>
+                  <label className="adm-label">Marks per correct answer</label>
                   <input type="number" step="0.01" className="adm-input" value={formData.positiveMarking} onChange={e => setFormData(f => ({ ...f, positiveMarking: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div className="adm-field">
-                  <label className="adm-label">Negative Marking</label>
+                  <label className="adm-label">Penalty per wrong answer</label>
                   <input type="number" step="0.01" className="adm-input" value={formData.negativeMarking} onChange={e => setFormData(f => ({ ...f, negativeMarking: parseFloat(e.target.value) || 0 }))} />
                 </div>
                 <div className="adm-field">
